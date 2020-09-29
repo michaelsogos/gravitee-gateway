@@ -52,8 +52,8 @@ public class PlanPolicyResolver extends RuleBasedPolicyResolver {
 
         // No plan is matching the plan associated to the secured request
         // The call is probably not relative to the same API.
-        if (apiPlan != null) {
-            Map<String, Path> paths = apiPlan.getPaths();
+        if (api.isPlanRequired() && apiPlan != null) {
+            Map<String, io.gravitee.definition.model.Path> paths = apiPlan.getPaths();
 
             if (paths != null && ! paths.isEmpty()) {
                 // For 1.0.0, there is only a single root path defined
@@ -62,7 +62,7 @@ public class PlanPolicyResolver extends RuleBasedPolicyResolver {
 
                 return resolve(context, rootPath.getRules());
             }
-        } else {
+        } else if (api.isPlanRequired()) { // for CRD definition plan is optional
             logger.warn("No plan has been selected to process request {}. Returning an unauthorized HTTP status (401)",
                     context.request().id());
             return null;

@@ -115,6 +115,15 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
     private Set<Policy> policies() {
         Set<io.gravitee.definition.model.Policy> policies = new HashSet<>();
 
+        if (!this.isPlanRequired()) {
+            String security = this.security.toUpperCase();
+            Policy secPolicy = buildSecurityPolicy(security);
+
+            if (secPolicy.getName() != null) {
+                policies.add(secPolicy);
+            }
+        }
+
         // Load policies from the API
         if (getPaths() != null) {
             getPaths().values()
@@ -129,23 +138,8 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         // Load policies from Plans
         getPlans().forEach(plan -> {
             String security = plan.getSecurity();
-            Policy secPolicy = new Policy();
-            switch (security) {
-                case "KEY_LESS":
-                case "key_less":
-                    secPolicy.setName("key-less");
-                    break;
-                case "API_KEY":
-                case "api_key":
-                    secPolicy.setName("api-key");
-                    break;
-                case "OAUTH2":
-                    secPolicy.setName("oauth2");
-                    break;
-                case "JWT":
-                    secPolicy.setName("jwt");
-                    break;
-            }
+            Policy secPolicy = buildSecurityPolicy(security);
+
 
             if (secPolicy.getName() != null) {
                 policies.add(secPolicy);
@@ -184,6 +178,27 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         }
 
         return policies;
+    }
+
+    private Policy buildSecurityPolicy(String security) {
+        Policy secPolicy = new Policy();
+        switch (security) {
+            case "KEY_LESS":
+            case "key_less":
+                secPolicy.setName("key-less");
+                break;
+            case "API_KEY":
+            case "api_key":
+                secPolicy.setName("api-key");
+                break;
+            case "OAUTH2":
+                secPolicy.setName("oauth2");
+                break;
+            case "JWT":
+                secPolicy.setName("jwt");
+                break;
+        }
+        return secPolicy;
     }
 
     private Collection<Policy> getPolicies(List<Step> flowStep) {

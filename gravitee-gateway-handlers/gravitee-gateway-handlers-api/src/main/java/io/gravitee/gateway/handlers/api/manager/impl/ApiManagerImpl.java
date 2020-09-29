@@ -148,7 +148,7 @@ public class ApiManagerImpl extends MapListenerAdapter<String, Api> implements A
             logger.info("Deployment of {}", api);
 
             // Deploy the API only if there is at least one plan
-            if (!api.getPlans().isEmpty()) {
+            if (!api.getPlans().isEmpty() || !api.isPlanRequired()) {
                 logger.info("Deploying {} plan(s) for {}:", api.getPlans().size(), api);
                 for (Plan plan : api.getPlans()) {
                     logger.info("\t- {}", plan.getName());

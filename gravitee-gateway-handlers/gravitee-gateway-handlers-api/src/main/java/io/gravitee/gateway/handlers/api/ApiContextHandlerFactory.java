@@ -67,7 +67,11 @@ public class ApiContextHandlerFactory implements ReactorHandlerFactory<Api> {
         context.addBeanFactoryPostProcessor(configurer);
 
         context.getBeanFactory().registerSingleton("api", api);
-        context.register(ApiHandlerConfiguration.class);
+        if (api.isPlanRequired()) {
+            context.register(ApiHandlerConfiguration.class);
+        } else {
+            context.register(FreePlanApiHandlerConfiguration.class);
+        }
         context.setId("context-api-" + api.getId());
         context.refresh();
 
