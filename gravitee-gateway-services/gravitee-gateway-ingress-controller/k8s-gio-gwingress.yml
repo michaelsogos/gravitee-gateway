@@ -1,0 +1,110 @@
+#
+# Copyright (C) 2015 The Gravitee team (http://gravitee.io)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    meta.helm.sh/release-name: gateway-ingress
+    meta.helm.sh/release-namespace: default
+  creationTimestamp: "2020-10-01T09:55:36Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/instance: gateway-ingress
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: apim
+    app.kubernetes.io/version: 1.30.19
+    helm.sh/chart: apim-1.29.12
+  name: gateway-ingress-apim-gateway
+  namespace: default
+  resourceVersion: "76989"
+  selfLink: /apis/apps/v1/namespaces/default/deployments/gateway-ingress-apim-gateway
+  uid: 2fed97b8-0e55-4f26-91a7-e87434da2a80
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: gateway
+      app.kubernetes.io/instance: gateway-ingress
+      app.kubernetes.io/name: apim
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        chaos.alpha.kubernetes.io/enabled: "false"
+        checksum/config: 4bc1981f291ba0ccb423c567ac272f482caf56a08acca172bec5711cd90e149b
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/component: gateway
+        app.kubernetes.io/instance: gateway-ingress
+        app.kubernetes.io/name: apim
+    spec:
+      serviceAccountName: gio-ingress-sa
+      containers:
+      - image: registry.localhost:5000/gravitee-ingress:latest
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          successThreshold: 1
+          tcpSocket:
+            port: 8082
+          timeoutSeconds: 1
+        name: gateway-ingress-apim-gateway
+        ports:
+        - containerPort: 8082
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          tcpSocket:
+            port: 8082
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/graviteeio-gateway/config/gravitee.yml
+          name: config
+          subPath: gravitee.yml
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: gateway-ingress-apim-gateway
+        name: config

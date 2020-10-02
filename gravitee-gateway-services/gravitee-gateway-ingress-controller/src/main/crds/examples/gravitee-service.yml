@@ -1,0 +1,79 @@
+#
+# Copyright (C) 2015 The Gravitee team (http://gravitee.io)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+apiVersion: "gravitee.io/v1alpha1"
+kind: GraviteeServices
+metadata:
+  name: internal-gw-services
+spec:
+  enable: true # allow to disable all services of this CRD
+  gateway:
+    name: internal-gw
+    namespace: default
+  services:
+    my-toto-api:
+      type: API
+      security:
+        - name: jwt-poc
+          resource: internal-gw-plugin
+      cors:
+        enabled: false
+      entrypoints:
+        - vhost: "toto.domain.name" ## authorize a list ? for internal gw does it make sens I guess not?
+          path: "/context/path"
+          enable: true
+      paths:
+        - prefix: "/path/"
+          rules: []
+        - prefix: "/other-path/"
+          rules:
+            - methods: ["POST"]
+              policy:
+                - name: rate-limit
+                  resource: internal-gw-plugin
+      endpoints_group:
+        default-group:
+          endpoints: svc1 # k8s service (for external services, we can use service with type:ExternalService)
+          # underlying configuration may be provided as annotation identifying CRD at service level
+          # what if there are multiple service
+          type: http
+          weight: 1
+          tenant: "" # should we define tenant or use some label selector (waht about multi k8s cluster)
+          http:
+            connectTimeout: 5000
+            idleTimeout: 60000
+            keepAlive: true
+            readTimeout: 10000
+            pipelining: false
+            maxConcurrentConnections: 100
+            useCompression: true
+            followRedirects": false
+          proxy:
+            enabled: false
+            useSystemProxy: false
+            host: "null"
+            port: 0
+            type: "HTTP"
+          ssl":
+            trustAll": false
+            hostnameVerifier": false
+            trustStore":  ## will generate a restart of GW pod when update ssl store paths
+              type": "PEM"
+              content": "ggg"
+            keyStore:
+              type: "PEM"
+              certContent: "gggggggg"
+              keyContent: "gggggggg"
