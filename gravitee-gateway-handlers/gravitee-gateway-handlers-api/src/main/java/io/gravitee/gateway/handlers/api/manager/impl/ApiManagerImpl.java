@@ -170,7 +170,7 @@ public class ApiManagerImpl extends MapListenerAdapter<String, Api> implements A
         MDC.put("api", api.getId());
         logger.info("Updating {}", api);
 
-        if (! api.getPlans().isEmpty()) {
+        if (!api.getPlans().isEmpty() || !api.isPlanRequired()) {
             logger.info("Deploying {} plan(s) for {}:", api.getPlans().size(), api);
             for(Plan plan: api.getPlans()) {
                 logger.info("\t- {}", plan.getName());
