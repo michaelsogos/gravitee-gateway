@@ -19,61 +19,68 @@ kind: GraviteeServices
 metadata:
   name: internal-gw-services
 spec:
-  enable: true # allow to disable all services of this CRD
+  enabled: true # allow to disable all services of this CRD
   gateway:
     name: internal-gw
     namespace: default
   services:
-    my-toto-api:
+    - name : my-toto-api
       type: API
       security:
-        - name: jwt-poc
-          resource: internal-gw-plugin
+        name: jwt-poc
+        resource: internal-gw-plugins
       cors:
         enabled: false
+      #vhosts instead entrypoints:
       entrypoints:
-        - vhost: "toto.domain.name" ## authorize a list ? for internal gw does it make sens I guess not?
+          # TODO: check if host matching in API code should ignore the port number
+        - vhost: "toto.domain.name:82" ## authorize a list ? for internal gw does it make sens I guess not?
+          #host instead vhost
           path: "/context/path"
-          enable: true
+          enabled: true
       paths:
-        - prefix: "/path/"
+        - prefix: "/*"
           rules: []
         - prefix: "/other-path/"
           rules:
             - methods: ["POST"]
+              # pouvoir redef la policy
               policy:
-                - name: rate-limit
-                  resource: internal-gw-plugin
-      endpoints_group:
-        default-group:
-          endpoints: svc1 # k8s service (for external services, we can use service with type:ExternalService)
-          # underlying configuration may be provided as annotation identifying CRD at service level
-          # what if there are multiple service
-          type: http
-          weight: 1
-          tenant: "" # should we define tenant or use some label selector (waht about multi k8s cluster)
-          http:
-            connectTimeout: 5000
-            idleTimeout: 60000
-            keepAlive: true
-            readTimeout: 10000
-            pipelining: false
-            maxConcurrentConnections: 100
-            useCompression: true
-            followRedirects": false
-          proxy:
-            enabled: false
-            useSystemProxy: false
-            host: "null"
-            port: 0
-            type: "HTTP"
-          ssl":
-            trustAll": false
-            hostnameVerifier": false
-            trustStore":  ## will generate a restart of GW pod when update ssl store paths
-              type": "PEM"
-              content": "ggg"
-            keyStore:
-              type: "PEM"
-              certContent: "gggggggg"
-              keyContent: "gggggggg"
+                resource: internal-gw-plugins
+                name: rate-limit
+                namespace: default
+      endpoints:
+        ## def proxy conf global ici
+        ## http client options aussi
+        - name: default-group
+          backend-service: # rename en service + ouvrir à external service no k8s
+            name: elastic-elasticsearch-master
+            port: 9200
+            namespace: default
+          configuration:
+            httpClientOptions:
+              connectTimeout: 5000
+              idleTimeout: 60000
+              keepAlive: true
+              readTimeout: 10000
+              pipelining: false
+              maxConcurrentConnections: 100
+              useCompression: true
+              followRedirects: false
+
+#            httpProxy:
+#              enabled: false
+#              useSystemProxy: false
+#              host: "null"
+#              port: 0
+#              type: "HTTP"
+#            httpSslClientOptions:
+#              trustAll": false
+#              hostnameVerifier": false
+#              trustStore":  ## will generate a restart of GW pod when update ssl store paths
+#                type": "PEM"
+#                content": "ggg"
+#              keyStore:
+#                type: "PEM"
+#                certContent: "gggggggg"
+#                keyContent: "gggggggg"

@@ -23,10 +23,10 @@ import java.util.Optional;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GravisteePluginSpec {
+public class GraviteePluginSpec {
     private Map<String, Plugin> plugins = new LinkedHashMap<>();
 
-    public GravisteePluginSpec() {
+    public GraviteePluginSpec() {
     }
 
     public Optional<Plugin> getPlugin(String name) {
@@ -43,7 +43,7 @@ public class GravisteePluginSpec {
 
     @Override
     public String toString() {
-        return "GravisteePluginSpec{" +
+        return "GraviteePluginSpec{" +
                 "plugins=" + plugins +
                 '}';
     }

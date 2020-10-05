@@ -18,19 +18,14 @@ package io.gravitee.gateway.services.ingress;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
-import io.fabric8.kubernetes.api.model.ListOptions;
-import io.fabric8.kubernetes.api.model.ListOptionsBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.extensions.Ingress;
-import io.fabric8.kubernetes.api.model.extensions.IngressList;
 import io.fabric8.kubernetes.api.model.extensions.IngressRule;
 import io.fabric8.kubernetes.client.*;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
-import io.gravitee.common.event.EventManager;
-import io.gravitee.common.event.impl.SimpleEvent;
 import io.gravitee.common.service.AbstractService;
 import io.gravitee.common.util.Maps;
 import io.gravitee.definition.model.*;
@@ -38,10 +33,9 @@ import io.gravitee.definition.model.endpoint.HttpEndpoint;
 import io.gravitee.gateway.handlers.api.definition.Api;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
 import io.gravitee.gateway.services.ingress.crd.resources.DoneableGraviteePlugin;
-import io.gravitee.gateway.services.ingress.crd.resources.GravisteePluginSpec;
+import io.gravitee.gateway.services.ingress.crd.resources.GraviteePluginSpec;
 import io.gravitee.gateway.services.ingress.crd.resources.GraviteePlugin;
 import io.gravitee.gateway.services.ingress.crd.resources.GraviteePluginList;
-import io.gravitee.repository.management.model.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -157,7 +151,7 @@ public class IngressControllerService extends AbstractService {
                 String conf = ingressMeta.getAnnotations().get("gravitee.io/security-config");
                 LOGGER.info("###" + securityType + " " + conf);
                 final String[] confIds = conf.split("#");
-                Optional<GravisteePluginSpec.Plugin> plugin = lookupSecurityPlugin(confIds[0], confIds[1], securityType);
+                Optional<GraviteePluginSpec.Plugin> plugin = lookupSecurityPlugin(confIds[0], confIds[1], securityType);
                 LOGGER.info("### founded ==> " + plugin.isPresent());
 
                 if (plugin.isPresent()) {
@@ -178,7 +172,7 @@ public class IngressControllerService extends AbstractService {
         }
     }
 
-    private  Optional<GravisteePluginSpec.Plugin> lookupSecurityPlugin(String resName, String name, String identifier) {
+    private  Optional<GraviteePluginSpec.Plugin> lookupSecurityPlugin(String resName, String name, String identifier) {
         CustomResourceDefinitionContext context = new CustomResourceDefinitionContext.Builder()
                 .withGroup("gravitee.io")
                 .withVersion("v1alpha1")

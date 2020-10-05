@@ -14,15 +14,10 @@
 # limitations under the License.
 #
 
-apiVersion: "gravitee.io/v1alpha1"
-kind: GraviteeGateway
-metadata:
-  name: internal-gw
-spec:
-  policies:
-    - namespace: "default"
-      resource: "internal-gw-plugins"
-      name: "rate-limit"
-  security:
-    resource: "internal-gw-plugins"
-    name: "oauth2"
+FROM graviteeio/apim-gateway:3.2
+
+RUN rm ${GRAVITEEIO_HOME}/lib/gravitee-gateway-handlers-api-3.*.jar && rm ${GRAVITEEIO_HOME}/lib/gravitee-gateway-security-core-3.*.jar
+
+COPY gravitee-gateway-handlers/gravitee-gateway-handlers-api/target/gravitee-gateway-handlers-api-3.3.0-SNAPSHOT.jar ${GRAVITEEIO_HOME}/lib/
+COPY gravitee-gateway-security/gravitee-gateway-security-core/target/gravitee-gateway-security-core-3.3.0-SNAPSHOT.jar ${GRAVITEEIO_HOME}/lib/
+COPY gravitee-gateway-services/gravitee-gateway-ingress-controller/target/gravitee-gateway-ingress-controller-3.3.0-SNAPSHOT.zip ${GRAVITEEIO_HOME}/plugins/

@@ -60,5 +60,15 @@ spec:
         addHeaders: true
         quota:
           periodTime: 2
+          periodTimeUnit: "HOURS"
+          limit: 1000
+    rate-limit:
+      type: policy
+      identifier: rate-limit
+      configuration:
+        async: false
+        addHeaders: true
+        rate:
+          periodTime: 1
           periodTimeUnit: "SECONDS"
-          limit: 1
+          limit: 10

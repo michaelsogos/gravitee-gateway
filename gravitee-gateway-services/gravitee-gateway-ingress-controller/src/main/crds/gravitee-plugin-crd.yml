@@ -51,7 +51,7 @@ spec:
                       configuration:
                         type: object
                         description: Map containing the pluging configuration (map structure based on the kind of plugin)
-                        additionalProperties: true
+                        x-kubernetes-preserve-unknown-fields: true
   # either Namespaced or Cluster
   scope: Namespaced
   names:

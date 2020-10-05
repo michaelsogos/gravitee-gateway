@@ -23,19 +23,19 @@ import io.fabric8.kubernetes.client.CustomResource;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GraviteePlugin extends CustomResource implements Namespaced {
-    private GraviteePluginSpec spec;
+public class GraviteeServices extends CustomResource implements Namespaced {
+    private GraviteeServicesSpec spec;
 
     @Override
     public ObjectMeta getMetadata() {
         return super.getMetadata();
     }
 
-    public GraviteePluginSpec getSpec() {
+    public GraviteeServicesSpec getSpec() {
         return spec;
     }
 
-    public void setSpec(GraviteePluginSpec spec) {
+    public void setSpec(GraviteeServicesSpec spec) {
         this.spec = spec;
     }
 
@@ -46,7 +46,7 @@ public class GraviteePlugin extends CustomResource implements Namespaced {
 
     @Override
     public String toString() {
-        return "GraviteePlugin{"+
+        return "GraviteeServices{"+
                 "apiVersion='" + getApiVersion() + "'" +
                 ", metadata=" + getMetadata() +
                 ", spec=" + spec +

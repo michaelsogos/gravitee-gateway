@@ -15,41 +15,39 @@
  */
 package io.gravitee.gateway.services.ingress.crd.resources;
 
-import io.fabric8.kubernetes.api.model.Namespaced;
-import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.kubernetes.client.CustomResource;
-
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GraviteePlugin extends CustomResource implements Namespaced {
-    private GraviteePluginSpec spec;
+public class GraviteeGatewayReference {
+    public static final String DEFAULT_NAMESPACE = "default";
+    private String namespace = DEFAULT_NAMESPACE;
+    private String name;
 
-    @Override
-    public ObjectMeta getMetadata() {
-        return super.getMetadata();
+    public GraviteeGatewayReference() {
     }
 
-    public GraviteePluginSpec getSpec() {
-        return spec;
+    public String getNamespace() {
+        return namespace;
     }
 
-    public void setSpec(GraviteePluginSpec spec) {
-        this.spec = spec;
+    public void setNamespace(String namespace) {
+        this.namespace = namespace;
     }
 
-    @Override
-    public String getApiVersion() {
-        return "gravitee.io/v1alpha1";
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     @Override
     public String toString() {
-        return "GraviteePlugin{"+
-                "apiVersion='" + getApiVersion() + "'" +
-                ", metadata=" + getMetadata() +
-                ", spec=" + spec +
-                "}";
+        return "GraviteeGatewayReference{" +
+                "namespace='" + namespace + '\'' +
+                ", name='" + name + '\'' +
+                '}';
     }
 }

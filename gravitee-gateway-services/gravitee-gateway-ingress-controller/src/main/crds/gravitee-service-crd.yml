@@ -41,85 +41,100 @@ spec:
                   default: true
                   description: allow to disable all services defined in the services section
                 gateway:
-                  namespace:
-                    type: string
-                    default: default
-                    description: Namespace where the GraviteeGateway is defined
-                  name:
-                    type: string
-                    description: The GraviteeGateway name
+                  type: object
+                  properties:
+                    namespace:
+                      type: string
+                      default: default
+                      description: Namespace where the GraviteeGateway is defined
+                    name:
+                      type: string
+                      description: The GraviteeGateway name
                 services:
+                  type: array
+                  items:
                     type: object
-                    additionalProperties:
-                      type: object
-                      properties:
-                          type:
+                    properties:
+                      name:
+                        type: string
+                      enabled:
+                        type: boolean
+                      type:
+                        type: string
+                        default: "API"
+                      security:
+                        type: object
+                        description: Security policy to apply to this service, override the one defined by GraviteeGateway if any
+                        properties:
+                          namespace:
                             type: string
-                            default: API
-                          security:
-                            type: object
-                            description: Security policy to apply to this service, override the one defined by GraviteeGateway if any
-                            properties:
-                              namespace:
-                                type: string
-                                default: default
-                                description: Namespace where the CustomResource is defined
-                              resource:
-                                type: string
-                                description: The CustomResource name
-                              name:
-                                type: string
-                                description: The name of security policy into the CustomResource
-                              required: ["name", "resource"]
-                          cors:
-                            type: object
-                            # TODO
-                            additionalProperties: true
-                          entrypoints:
-                            type: array
-                            items:
+                            default: "default"
+                            description: Namespace where the CustomResource is defined
+                          resource:
+                            type: string
+                            description: The CustomResource name
+                          name:
+                            type: string
+                            description: The name of security policy into the CustomResource
+                        required: ["name", "resource"]
+                      cors:
+                        type: object
+                        additionalProperties: true
+                      entrypoints:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            vhost:
+                              type: string
+                            path:
+                              type: string
+                            enabled:
+                              type: boolean
+                        minItems: 1
+                      paths:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            prefix:
+                              type: string
+                            rules:
+                              type: array
+                              items:
                                 type: object
                                 properties:
-                                  vhost:
-                                    type: string
-                                  path:
-                                    type: string
-                                  enable:
-                                    type: boolean
-                            minItems: 1
-                          paths:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                prefix:
-                                  type: string
-                                rules:
-                                  type: array
-                                  items:
+                                  methods:
+                                    type: array
+                                    items:
+                                      type: string
+                                  policy:
                                     type: object
                                     properties:
-                                      methods:
-                                        type: array
-                                        items: string
-                                      policy:
-                                        namespace:
-                                          type: string
-                                          default: default
-                                          description: Namespace where the CustomResource is defined
-                                        resource:
-                                          type: string
-                                          description: The CustomResource name
-                                        name:
-                                          type: string
-                                          description: The name of security policy into the CustomResource
-                                        required: [ "name", "resource" ]
-                            minItems: 1
-                          endpoints_group:
-                            type: object
-                            # TODO
-                            additionalProperties: true
-                          required: ["entrypoints", "paths"]
+                                      namespace:
+                                        type: string
+                                        default: default
+                                        description: Namespace where the CustomResource is defined
+                                      resource:
+                                        type: string
+                                        description: The CustomResource name
+                                      name:
+                                        type: string
+                                        description: The name of security policy into the CustomResource
+                      endpoints:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            backend-service:
+                              type: object
+                              additionalProperties: true
+                            configuration:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                    required: [ "entrypoints", "paths" ]
   # either Namespaced or Cluster
   scope: Namespaced
   names:
