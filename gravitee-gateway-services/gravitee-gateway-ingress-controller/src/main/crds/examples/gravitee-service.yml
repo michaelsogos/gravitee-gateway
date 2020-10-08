@@ -27,14 +27,13 @@ spec:
     - name : my-toto-api
       type: API
       security:
-        name: jwt-poc
+        name: key-less-poc
         resource: internal-gw-plugins
       cors:
         enabled: false
       #vhosts instead entrypoints:
       entrypoints:
-          # TODO: check if host matching in API code should ignore the port number
-        - vhost: "toto.domain.name:82" ## authorize a list ? for internal gw does it make sens I guess not?
+        - vhost: "toto.domain.name:82"
           #host instead vhost
           path: "/context/path"
           enabled: true
