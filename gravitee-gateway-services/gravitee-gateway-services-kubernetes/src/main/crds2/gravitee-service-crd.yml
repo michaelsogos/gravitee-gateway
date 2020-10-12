@@ -1,0 +1,195 @@
+#
+# Copyright (C) 2015 The Gravitee team (http://gravitee.io)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: gravitee-services.gravitee.io
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: gravitee.io
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1alpha1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: true
+                  description: allow to disable all services defined in the services section
+                gateway:
+                  type: object
+                  properties:
+                    namespace:
+                      type: string
+                      default: default
+                      description: Namespace where the GraviteeGateway is defined
+                    name:
+                      type: string
+                      description: The GraviteeGateway name
+                services:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                      type:
+                        type: string
+                        description: "Type of API
+                        * api: API fully managed by the Controller through CRDs
+                        * managedApi: API declared by CRD but plan are required and provided by the Management Console
+                        "
+                        default: "api"
+                        enum: ["managedApi", "api"]
+                      security:
+                        type: object
+                        description: "
+                          For type 'api': Security policy to apply to this service, override the one defined by GraviteeGateway if any.
+                          For type 'managedApi': security policy is ignored and provided by plan
+                        "
+                        properties:
+                          namespace:
+                            type: string
+                            default: "default"
+                            description: Namespace where the CustomResource is defined
+                          resource:
+                            type: string
+                            description: The CustomResource name
+                          name:
+                            type: string
+                            description: The name of security policy into the CustomResource
+                        required: ["name", "resource"]
+                      cors:
+                        type: object
+                        additionalProperties: true
+                      resourceReferences:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            namespace:
+                              type: string
+                              default: default
+                              description: Namespace where the CustomResource is defined, take namespace of the gravitee-service custom resource if missing
+                            resource:
+                              type: string
+                              description: The CustomResource name
+                            name:
+                              type: string
+                              description: The name of security policy into the CustomResource
+                      resources:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            identifier:
+                              type: string
+                              description: Plugin identifier (cache...)
+                            configuration:
+                              type: object
+                              description: Map containing the pluging configuration (map structure based on the kind of plugin)
+                              x-kubernetes-preserve-unknown-fields: true
+                      vhosts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            host:
+                              type: string
+                            path:
+                              type: string
+                            enabled:
+                              type: boolean
+                        minItems: 1
+                      paths:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            prefix:
+                              type: string
+                            rules:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  methods:
+                                    type: array
+                                    items:
+                                      type: string
+                                  # if policy & policy-ref are defined, policy is used because more specific
+                                  policyReference:
+                                    type: object
+                                    properties:
+                                      namespace:
+                                        type: string
+                                        default: default
+                                        description: Namespace where the CustomResource is defined, take namespace of the gravitee-service custom resource if missing
+                                      resource:
+                                        type: string
+                                        description: The CustomResource name
+                                      name:
+                                        type: string
+                                        description: The name of security policy into the CustomResource
+                                  policy:
+                                    type: object
+                                    properties:
+                                      identifier:
+                                        type: string
+                                        description: Plugin identifier (jwt, rate-limit...)
+                                      configuration:
+                                        type: object
+                                        description: Map containing the pluging configuration (map structure based on the kind of plugin)
+                                        x-kubernetes-preserve-unknown-fields: true
+                      endpoints:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            loadBalancing:
+                              type: string
+                              default: round-robin
+                              enum: ["round-robin", "random", "weighted-round-robin", "weighted-random"]
+                            backendServices:
+                              type: array
+                              items:
+                                type: object
+                                additionalProperties: true
+
+                    required: [ "vhosts", "paths", "endpoints" ]
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: gravitee-services
+    # singular name to be used as an alias on the CLI and for display
+    singular: gravitee-service
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: GraviteeServices
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - giosvc

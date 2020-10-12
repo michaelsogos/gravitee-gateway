@@ -38,8 +38,7 @@
         <module>gravitee-gateway-services-healthcheck</module>
         <module>gravitee-gateway-services-heartbeat</module>
         <module>gravitee-gateway-services-endpoint-discovery</module>
-        <module>gravitee-gateway-ingress-controller</module>
-    </modules>
+        <module>gravitee-gateway-services-kubernetes</module>   </modules>
 
     <dependencyManagement>
         <dependencies>

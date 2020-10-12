@@ -20,4 +20,4 @@ RUN rm ${GRAVITEEIO_HOME}/lib/gravitee-gateway-handlers-api-3.*.jar && rm ${GRAV
 
 COPY gravitee-gateway-handlers/gravitee-gateway-handlers-api/target/gravitee-gateway-handlers-api-3.3.0-SNAPSHOT.jar ${GRAVITEEIO_HOME}/lib/
 COPY gravitee-gateway-security/gravitee-gateway-security-core/target/gravitee-gateway-security-core-3.3.0-SNAPSHOT.jar ${GRAVITEEIO_HOME}/lib/
-COPY gravitee-gateway-services/gravitee-gateway-ingress-controller/target/gravitee-gateway-ingress-controller-3.3.0-SNAPSHOT.zip ${GRAVITEEIO_HOME}/plugins/
+COPY gravitee-gateway-services/gravitee-gateway-ingress-controller/target/gravitee-gateway-services-kubernetes-3.3.0-SNAPSHOT.zip ${GRAVITEEIO_HOME}/plugins/
