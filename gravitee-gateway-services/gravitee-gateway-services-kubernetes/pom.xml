@@ -22,12 +22,11 @@
     <parent>
         <artifactId>gravitee-gateway-services</artifactId>
         <groupId>io.gravitee.gateway.services</groupId>
-        <version>3.3.0-SNAPSHOT</version>
+        <version>3.6.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>gravitee-gateway-services-kubernetes</artifactId>
-
 
     <dependencies>
         <!-- Gravitee.io dependencies -->
@@ -51,6 +50,14 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- rxjava dependencies provided by VertX through gateway-standalone-container -->
+        <dependency>
+            <groupId>io.reactivex.rxjava2</groupId>
+            <artifactId>rxjava</artifactId>
+            <version>${rxjava.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/io.fabric8/kubernetes-client -->
         <dependency>
             <groupId>io.fabric8</groupId>
@@ -58,6 +65,9 @@
             <version>4.11.1</version>
         </dependency>
     </dependencies>
+    <properties>
+        <rxjava.version>2.2.19</rxjava.version>
+    </properties>
 
 
     <build>
