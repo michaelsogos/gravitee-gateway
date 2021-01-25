@@ -59,10 +59,18 @@ spec:
                         type: boolean
                       type:
                         type: string
-                        default: "API"
+                        description: "Type of API
+                        * api: API fully managed by the Controller through CRDs
+                        * managedApi: API declared by CRD but plan are required and provided by the Management Console
+                        "
+                        default: "api"
+                        enum: ["managedApi", "api"]
                       security:
                         type: object
-                        description: Security policy to apply to this service, override the one defined by GraviteeGateway if any
+                        description: "
+                          For type 'api': Security policy to apply to this service, override the one defined by GraviteeGateway if any.
+                          For type 'managedApi': security policy is ignored and provided by plan
+                        "
                         properties:
                           namespace:
                             type: string
@@ -78,6 +86,33 @@ spec:
                       cors:
                         type: object
                         additionalProperties: true
+                      resourceReferences:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            namespace:
+                              type: string
+                              default: default
+                              description: Namespace where the CustomResource is defined, take namespace of the gravitee-service custom resource if missing
+                            resource:
+                              type: string
+                              description: The CustomResource name
+                            name:
+                              type: string
+                              description: The name of security policy into the CustomResource
+                      resources:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            identifier:
+                              type: string
+                              description: Plugin identifier (cache...)
+                            configuration:
+                              type: object
+                              description: Map containing the pluging configuration (map structure based on the kind of plugin)
+                              x-kubernetes-preserve-unknown-fields: true
                       vhosts:
                         type: array
                         items:
@@ -135,15 +170,17 @@ spec:
                         additionalProperties:
                           type: object
                           properties:
+                            loadBalancing:
+                              type: string
+                              default: round-robin
+                              enum: ["round-robin", "random", "weighted-round-robin", "weighted-random"]
                             backendServices:
                               type: array
                               items:
                                 type: object
                                 additionalProperties: true
-                            configuration:
-                              type: object
-                              x-kubernetes-preserve-unknown-fields: true
-                    required: [ "vhosts", "paths" ]
+
+                    required: [ "vhosts", "paths", "endpoints" ]
   # either Namespaced or Cluster
   scope: Namespaced
   names:

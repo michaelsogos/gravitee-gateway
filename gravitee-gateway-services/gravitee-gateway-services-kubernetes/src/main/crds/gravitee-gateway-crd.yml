@@ -38,7 +38,8 @@ spec:
               properties:
                 selectors:
                   type: object
-                  additionalProperties: string
+                  additionalProperties:
+                    type: string
                 policies:
                   type: array
                   default: []
@@ -92,16 +93,74 @@ spec:
                   properties:
                     httpClient:
                       type: object
-                      description: HttpClient configuration
+                      description: "
+                      HttpClient configuration to apply for the backend service client:
+                        * connectTimeout: 5000
+                        * idleTimeout: 60000
+                        * keepAlive: true
+                        * readTimeout: 10000
+                        * pipelining: false
+                        * maxConcurrentConnections: 100
+                        * useCompression: true
+                        * followRedirects: false
+                      "
                       x-kubernetes-preserve-unknown-fields: true
                     httpSslOptions:
                       type: object
-                      description: HttpClient SSL options
+                      description: "
+                       HttpClient SSL options to apply for the backend service client:
+                         * trustAll: false
+                         * hostnameVerifier: false
+                         * trustStore:
+                             type: PEM
+                             content: <secret name>
+                         * keyStore:
+                             type: PEM
+                             certContent: <secret name>
+                             keyContent: <secret name>
+                      "
                       x-kubernetes-preserve-unknown-fields: true
                     httpProxy:
                       type: object
                       description: HttpProxy options
                       x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              properties:
+                hashCodes:
+                  type: object
+                  description: hashCode for each plugin
+                  properties:
+                    plugins:
+                      type: object
+                      additionalProperties: true
+                    defaultHttpConfig:
+                      type: string
+                integration:
+                  type: object
+                  properties:
+                    state:
+                      type: string
+                      description: The integration state of the resource
+                    message:
+                      type: string
+                      description: Additional data about the state
+      subresources:
+        # status enables the status subresource.
+        status: { }
+      additionalPrinterColumns:
+        - name: State
+          type: string
+          description: The integration state of the resource
+          jsonPath: .status.integration.state
+        - name: Message
+          type: string
+          description: Additional data about the state (may be nempty)
+          jsonPath: .status.integration.message
+        - name: GatewaySelectors
+          type: string
+          description: The integration state of the resource
+          jsonPath: .spec.selectors
   scope: Namespaced
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>

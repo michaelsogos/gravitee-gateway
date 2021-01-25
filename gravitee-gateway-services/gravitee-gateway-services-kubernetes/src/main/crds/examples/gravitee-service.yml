@@ -25,7 +25,7 @@ spec:
     namespace: default
   services:
     my-toto-api:
-      type: API
+      type: api
       security:
         name: jwt-poc
         resource: internal-gw-plugins
@@ -60,17 +60,15 @@ spec:
                     periodTimeUnit: "HOURS"
                     limit: 1000
       endpoints:
-        - default-group:
-            - name: elastic-elasticsearch-master
-              port: 9200 # pouvoir mettre un name
-              namespace: default
-              configuration:
-                httpClient:
-                  connectTimeout: 5000
-                  idleTimeout: 60000
-                  keepAlive: true
-            configuration:
-              httpClient:
-                connectTimeout: 5000
-                idleTimeout: 60000
-                keepAlive: true
+        default-group:
+          loadBalancing: round-robin
+          # httpClientOptions, httpSslOptions... provided by gravitee-backend-policy... really useful ?az
+          backendServices:
+          - name: elastic-elasticsearch-master
+            # namespace: use the ns of this CRD...
+            port: 9200 # pouvoir mettre un name
+            weight: 1
+          - name: another-elastic-elasticsearch
+            # namespace: use the ns of this CRD...
+            port: 9200 # pouvoir mettre un name
+            weight: 1

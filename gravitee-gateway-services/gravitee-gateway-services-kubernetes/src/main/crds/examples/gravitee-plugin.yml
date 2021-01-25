@@ -21,21 +21,23 @@ metadata:
 spec:
   plugins:
     key-less-poc:
-        type: security
-        identifier: key_less
+        policy: key_less
     jwt-poc:
-        type: security
-        identifier: jwt
+        policy: jwt
         configuration:
           signature: "HMAC_HS256"
           publicKeyResolver: "GIVEN_KEY"
           useSystemProxy: false
           extractClaims: false
           propagateAuthHeader: true
-          resolverParameter: "ae0368e97a7574a05995c0bf535fa395776f2e941715870cf5dfab3be6868364"
+          #resolverParameter: "ae0368e97a7574a05995c0bf535fa395776f2e941715870cf5dfab3be6868364"
+          resolverParameter:
+            valueFrom:
+              secretKeyRef:
+                name: mysecret
+                key: password
     oauth2:
-      type: security
-      identifier: oauth2
+      policy: oauth2
       configuration:
         oauthResource: default.internal-gw-plugins.oauth2-resource
         extractPayload: false
@@ -45,16 +47,14 @@ spec:
         propagateAuthHeader: true
     oauth2-resource:
       # resource will be named : <namespace>.<custom-res-name>.oauth2-resource
-      type: resource
-      identifier: oauth2
+      resource: oauth2
       configuration:
         authorizationServerUrl: e
         introspectionEndpoint: e
         clientId: e
         clientSecret: e
     quota-policy:
-      type: policy
-      identifier: quota
+      policy: quota
       configuration:
         async: false
         addHeaders: true
@@ -63,8 +63,7 @@ spec:
           periodTimeUnit: "HOURS"
           limit: 1000
     rate-limit:
-      type: policy
-      identifier: rate-limit
+      policy: rate-limit
       configuration:
         async: false
         addHeaders: true

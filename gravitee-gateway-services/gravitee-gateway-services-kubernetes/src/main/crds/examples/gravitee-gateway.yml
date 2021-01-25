@@ -32,7 +32,7 @@ spec:
     - namespace: "default"
       resource: "internal-gw-plugins"
       name: "cache"
-  defaultBackendConfiguration:
+  defaultBackendConfigurations:
     httpClient:
       connectTimeout: 5000
       idleTimeout: 60000
