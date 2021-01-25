@@ -15,6 +15,7 @@
  */
 package io.gravitee.gateway.services.kube.crds.resources.service;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.gravitee.definition.model.HttpClientOptions;
 import io.gravitee.definition.model.HttpClientSslOptions;
 import io.gravitee.definition.model.HttpProxy;
@@ -34,9 +35,11 @@ import java.util.Optional;
  * @author GraviteeSource Team
  */
 public class BackendConfiguration {
-
+    @JsonProperty("httpProxy")
     private Map<String, Object> httpProxy;
+    @JsonProperty("httpClient")
     private HttpClientOptions httpClientOptions;
+    @JsonProperty("httpSslOptions")
     private Map<String, Object> httpClientSslOptions;
 
     public BackendConfiguration() {}

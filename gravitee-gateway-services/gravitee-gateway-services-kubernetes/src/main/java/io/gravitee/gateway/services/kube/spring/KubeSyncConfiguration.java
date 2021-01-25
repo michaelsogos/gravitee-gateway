@@ -15,10 +15,10 @@
  */
 package io.gravitee.gateway.services.kube.spring;
 
-import io.gravitee.gateway.services.kube.managers.GraviteeGatewayManager;
-import io.gravitee.gateway.services.kube.managers.GraviteePluginsManager;
-import io.gravitee.gateway.services.kube.managers.GraviteeServicesManager;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -27,21 +27,14 @@ import org.springframework.context.annotation.Configuration;
  * @author GraviteeSource Team
  */
 @Configuration
+@ComponentScan(basePackages = {
+        "io.gravitee.gateway.services.kube.managers",
+        "io.gravitee.gateway.services.kube.services"
+})
 public class KubeSyncConfiguration {
 
     @Bean
-    public GraviteeGatewayManager gatewayManager() {
-        return new GraviteeGatewayManager();
+    public KubernetesClient provideKubeClient() {
+        return new DefaultKubernetesClient();
     }
-
-    @Bean
-    public GraviteePluginsManager pluginsManager() {
-        return new GraviteePluginsManager();
-    }
-
-    @Bean
-    public GraviteeServicesManager servicesManager() {
-        return new GraviteeServicesManager();
-    }
-
 }

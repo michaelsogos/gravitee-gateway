@@ -352,7 +352,7 @@ public class GraviteeServicesServiceImpl
                             proxyConfig = buildHttpProxy(endpointProxyOptions).orElse(null);
                         }
 
-                        if (clientOptions == null && groupBackendConfig.getHttpClientOptions() != null) {
+                        if (clientOptions == null && groupBackendConfig != null && groupBackendConfig.getHttpClientOptions() != null) {
                             clientOptions = groupBackendConfig.getHttpClientOptions();
                         }
 
