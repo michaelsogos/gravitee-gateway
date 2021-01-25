@@ -39,6 +39,10 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
     private boolean enabled = true;
     private Date deployedAt;
 
+    private boolean planRequired = true;
+    private String security;
+    private String securityDefinition = "{}";
+
     public Api() {
     }
 
@@ -78,6 +82,30 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         this.setDefinitionVersion(definition.getDefinitionVersion());
         this.setFlows(definition.getFlows());
         this.setFlowMode(definition.getFlowMode());
+    }
+
+    public boolean isPlanRequired() {
+        return planRequired;
+    }
+
+    public void setPlanRequired(boolean planRequired) {
+        this.planRequired = planRequired;
+    }
+
+    public String getSecurity() {
+        return security;
+    }
+
+    public void setSecurity(String security) {
+        this.security = security;
+    }
+
+    public String getSecurityDefinition() {
+        return securityDefinition;
+    }
+
+    public void setSecurityDefinition(String securityDefinition) {
+        this.securityDefinition = securityDefinition;
     }
 
     public boolean isEnabled() {

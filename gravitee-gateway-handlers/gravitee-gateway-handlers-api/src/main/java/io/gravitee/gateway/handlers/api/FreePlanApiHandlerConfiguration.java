@@ -15,7 +15,7 @@
  */
 package io.gravitee.gateway.handlers.api;
 
-import io.gravitee.definition.model.Api;
+import io.gravitee.gateway.handlers.api.definition.Api;
 import io.gravitee.gateway.core.endpoint.factory.EndpointFactory;
 import io.gravitee.gateway.core.endpoint.factory.spring.SpringFactoriesEndpointFactory;
 import io.gravitee.gateway.core.endpoint.lifecycle.GroupLifecyleManager;
@@ -29,7 +29,6 @@ import io.gravitee.gateway.handlers.api.context.ApiTemplateVariableProvider;
 import io.gravitee.gateway.handlers.api.path.PathResolver;
 import io.gravitee.gateway.handlers.api.path.impl.ApiPathResolverImpl;
 import io.gravitee.gateway.handlers.api.policy.security.FreePlanAuthenticationHandlerEnhancer;
-import io.gravitee.gateway.handlers.api.policy.security.PlanBasedAuthenticationHandlerEnhancer;
 import io.gravitee.gateway.handlers.api.processor.OnErrorProcessorChainFactory;
 import io.gravitee.gateway.handlers.api.processor.RequestProcessorChainFactory;
 import io.gravitee.gateway.handlers.api.processor.ResponseProcessorChainFactory;
@@ -49,8 +48,6 @@ import io.gravitee.gateway.resource.internal.ResourceManagerImpl;
 import io.gravitee.gateway.security.core.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -75,8 +72,8 @@ public class FreePlanApiHandlerConfiguration {
     }
 
     @Bean
-    public PolicyManager policyManager() {
-        return new DefaultPolicyManager();
+    public PolicyManager policyManager(PolicyFactory factory) {
+        return new DefaultPolicyManager(factory);
     }
 
     @Bean
@@ -105,8 +102,8 @@ public class FreePlanApiHandlerConfiguration {
     }
 
     @Bean
-    public AuthenticationHandlerEnhancer authenticationHandlerEnhancer() {
-        return new FreePlanAuthenticationHandlerEnhancer();
+    public AuthenticationHandlerEnhancer authenticationHandlerEnhancer(Api api) {
+        return new FreePlanAuthenticationHandlerEnhancer(api);
     }
 
     @Bean

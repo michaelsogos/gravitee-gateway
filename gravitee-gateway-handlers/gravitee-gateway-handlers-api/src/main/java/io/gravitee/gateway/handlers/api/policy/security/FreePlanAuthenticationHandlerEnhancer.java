@@ -16,10 +16,7 @@
 package io.gravitee.gateway.handlers.api.policy.security;
 
 import io.gravitee.gateway.handlers.api.definition.Api;
-import io.gravitee.gateway.handlers.api.policy.security.apikey.ApiKeyPlanBasedAuthenticationHandler;
-import io.gravitee.gateway.handlers.api.policy.security.rule.SelectionRulePlanBasedAuthenticationHandler;
 import io.gravitee.gateway.security.core.AuthenticationHandler;
-import io.gravitee.gateway.security.core.AuthenticationHandlerEnhancer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,12 +33,13 @@ public class FreePlanAuthenticationHandlerEnhancer extends PlanBasedAuthenticati
 
     private final Logger logger = LoggerFactory.getLogger(FreePlanAuthenticationHandlerEnhancer.class);
 
-    @Autowired
-    private Api api;
+    public FreePlanAuthenticationHandlerEnhancer(Api api) {
+        super(api);
+    }
 
     @Override
     public List<AuthenticationHandler> filter(List<AuthenticationHandler> authenticationHandlers) {
-        if (!api.getPlans().isEmpty()) {
+        if (!getApi().getPlans().isEmpty()) {
             // plan are not required but there are some definition.
             // plans have highest priority
             return super.filter(authenticationHandlers);
@@ -51,12 +49,12 @@ public class FreePlanAuthenticationHandlerEnhancer extends PlanBasedAuthenticati
 
             Optional<AuthenticationHandler> optionalProvider = authenticationHandlers
                     .stream()
-                    .filter(provider -> provider.name().equalsIgnoreCase(api.getSecurity()))
+                    .filter(provider -> provider.name().equalsIgnoreCase(getApi().getSecurity()))
                     .findFirst();
 
             if (optionalProvider.isPresent()) {
                 AuthenticationHandler provider = optionalProvider.get();
-                logger.debug("Authentication handler [{}] is required by the api [{}]. Installing...", provider.name(), api.getName());
+                logger.debug("Authentication handler [{}] is required by the api [{}]. Installing...", provider.name(), getApi().getName());
 
                 // Override the default api_key handler to validate the key against the current plan
                 if (provider.name().equals("api_key")) {
@@ -64,21 +62,18 @@ public class FreePlanAuthenticationHandlerEnhancer extends PlanBasedAuthenticati
                     throw new IllegalArgumentException("API KEY not yet managed");
                 }
 
-                providers.add(new FreePlanAuthenticationHandler(provider, api));
+                providers.add(new FreePlanAuthenticationHandler(provider, getApi()));
             }
 
             if (! providers.isEmpty()) {
-                logger.info("{} requires the following authentication handlers:", api);
+                logger.info("{} requires the following authentication handlers:", getApi());
                 providers.forEach(authenticationProvider -> logger.info("\t* {}", authenticationProvider.name()));
             } else {
-                logger.warn("No authentication handler is provided for {}", api);
+                logger.warn("No authentication handler is provided for {}", getApi());
             }
 
             return providers;
         }
     }
 
-    public void setApi(Api api) {
-        this.api = api;
-    }
 }

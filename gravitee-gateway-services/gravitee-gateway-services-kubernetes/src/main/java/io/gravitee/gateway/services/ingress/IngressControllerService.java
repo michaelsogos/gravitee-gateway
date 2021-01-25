@@ -33,7 +33,6 @@ import io.gravitee.definition.model.endpoint.HttpEndpoint;
 import io.gravitee.gateway.handlers.api.definition.Api;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
 import io.gravitee.gateway.services.ingress.crd.resources.DoneableGraviteePlugin;
-import io.gravitee.gateway.services.ingress.crd.resources.GraviteePluginSpec;
 import io.gravitee.gateway.services.ingress.crd.resources.GraviteePlugin;
 import io.gravitee.gateway.services.ingress.crd.resources.GraviteePluginList;
 import io.gravitee.gateway.services.ingress.crd.resources.plugin.Plugin;
@@ -122,10 +121,10 @@ public class IngressControllerService extends AbstractService {
                                     LOGGER.debug("Api definition created from Ingress event : " + new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(api));
                                     if (apiManager.get(api.getId()) != null) {
                                         LOGGER.info("Update Api '{}'", api.getId());
-                                        apiManager.update(api);
+                                        apiManager.register(api);
                                     } else {
                                         LOGGER.info("Deploy Api '{}'", api.getId());
-                                        apiManager.deploy(api);
+                                        apiManager.register(api);
                                     }
                                 } catch (JsonProcessingException e) {
                                     e.printStackTrace();

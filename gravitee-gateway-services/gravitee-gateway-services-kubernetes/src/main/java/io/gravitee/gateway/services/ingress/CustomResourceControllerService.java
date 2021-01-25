@@ -146,14 +146,14 @@ public class CustomResourceControllerService extends AbstractService {
             if (apiManager.get(api.getId()) != null) {
                 if (api.isEnabled()) {
                     LOGGER.info("Update Api '{}'", api.getId());
-                    apiManager.update(api);
+                    apiManager.register(api);
                 } else {
                     LOGGER.info("Undeploy Api '{}'", api.getId());
-                    apiManager.undeploy(api.getId());
+                    apiManager.unregister(api.getId());
                 }
             } else {
                 LOGGER.info("Deploy Api '{}'", api.getId());
-                apiManager.deploy(api);
+                apiManager.register(api);
             }
         });
     }
@@ -235,7 +235,7 @@ public class CustomResourceControllerService extends AbstractService {
                 .map(serviceName -> buildApiId(gioServices, serviceName))
                 .forEach(apiId -> {
                     LOGGER.info("Undeploy api '{}'", apiId);
-                    apiManager.undeploy(apiId);
+                    apiManager.unregister(apiId);
                 });
     }
 
