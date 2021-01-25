@@ -29,9 +29,13 @@ import io.gravitee.common.service.AbstractService;
 import io.gravitee.definition.model.LoadBalancerType;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.managers.GraviteeGatewayManager;
+import io.gravitee.gateway.services.kube.managers.GraviteePluginsManager;
+import io.gravitee.gateway.services.kube.managers.GraviteeServicesManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -41,15 +45,39 @@ import java.io.IOException;
  * @author GraviteeSource Team
  */
 @Component
-public class ApimControllerComponent extends AbstractService {
+public class KubeSyncService extends AbstractService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApimControllerComponent.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KubeSyncService.class);
 
     @Autowired
     private KubernetesClient client;
 
+    @Autowired
+    public GraviteeGatewayManager gatewayManager;
+
+    @Autowired
+    public GraviteePluginsManager pluginsManager;
+
+    @Autowired
+    public GraviteeServicesManager servicesManager;
+
     @Override
     protected void doStart() throws Exception {
+        SimpleModule module = initializeJsonModule();
+        Serialization.jsonMapper().registerModule(module);
+
+        if (pluginsManager != null) {
+            pluginsManager.start();
+        }
+        if (gatewayManager != null) {
+            gatewayManager.start();
+        }
+        if (servicesManager != null) {
+            servicesManager.start();
+        }
+    }
+
+    private SimpleModule initializeJsonModule() {
         SimpleModule module = new SimpleModule();
 
         // useful to send data to gateway
@@ -95,15 +123,27 @@ public class ApimControllerComponent extends AbstractService {
                 }
             }
         );
-
-        Serialization.jsonMapper().registerModule(module);
+        return module;
     }
 
     @Override
     protected void doStop() throws Exception {
         LOGGER.info("APIM Controller stopping...");
+        if (servicesManager != null) {
+            servicesManager.stop();
+        }
+
+        if (gatewayManager != null) {
+            gatewayManager.stop();
+        }
+
+        if (pluginsManager != null) {
+            pluginsManager.stop();
+        }
+
         if (client != null) {
             client.close();
         }
+
     }
 }
