@@ -24,6 +24,7 @@ import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayReference
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
 import io.gravitee.gateway.services.kube.services.KubernetesService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 import java.util.HashMap;
 import java.util.Map;

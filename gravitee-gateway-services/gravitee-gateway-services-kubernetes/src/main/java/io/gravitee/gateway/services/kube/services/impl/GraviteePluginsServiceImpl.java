@@ -164,7 +164,7 @@ public class GraviteePluginsServiceImpl
             // updating a CR status will trigger a new MODIFIED event, we have to test
             // if some plugins changed in order stop an infinite loop
             status.setHashCodes(newHashCodes);
-            return context.refreshResource(crdClient.updateStatus(context.getResource()));
+            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
         } else {
             LOGGER.debug("No changes in GravteePlugins '{}', bypass status update", context.getResourceName());
             return context;
@@ -195,7 +195,7 @@ public class GraviteePluginsServiceImpl
             integration.setMessage(message);
             status.setIntegration(integration);
 
-            return context.refreshResource(crdClient.updateStatus(context.getResource()));
+            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
         } else {
             LOGGER.debug("No changes in GravteePlugins '{}', bypass status update", context.getResourceName());
             return context;
