@@ -114,7 +114,7 @@ public class GraviteePluginsServiceImpl
                         OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
                     );
 
-                    GraviteePluginReference ref = convertToRef(context, entry.getKey());
+                    PluginReference ref = convertToRef(context, entry.getKey());
                     pluginRevisions.add(new PluginRevision<>(resource, ref, context.getGeneration(), computeResourceHashCode(resource)));
                 } else {
                     // policy or security policy, both have the same controls
@@ -124,7 +124,7 @@ public class GraviteePluginsServiceImpl
                         OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
                     );
 
-                    GraviteePluginReference ref = convertToRef(context, entry.getKey());
+                    PluginReference ref = convertToRef(context, entry.getKey());
                     pluginRevisions.add(new PluginRevision<>(policy, ref, context.getGeneration(), computePolicyHashCode(policy)));
                 }
             } catch (JsonProcessingException e) {
@@ -202,14 +202,6 @@ public class GraviteePluginsServiceImpl
         }
     }
 
-    private GraviteePluginReference convertToRef(WatchActionContext<GraviteePlugin> context, String name) {
-        GraviteePluginReference ref = new GraviteePluginReference();
-        ref.setName(name);
-        ref.setNamespace(context.getNamespace());
-        ref.setResource(context.getResourceName());
-        return ref;
-    }
-
     private String buildResourceName(WatchActionContext<GraviteePlugin> context, String name) {
         return name + "." + context.getResourceName() + "." + context.getNamespace();
     }
@@ -226,7 +218,7 @@ public class GraviteePluginsServiceImpl
     }
 
     @Override
-    public PluginRevision<Policy> buildSecurityPolicy(WatchActionContext context, GraviteePluginReference pluginRef) {
+    public PluginRevision<Policy> buildAuthenticationPolicy(WatchActionContext context, PluginReference pluginRef) {
         PluginRevision<Policy> result = new PluginRevision<>(null, pluginRef, 0, null);
         try {
             // if namespace isn't specified in the plugin reference, we use the same namespace as the context resource
@@ -253,7 +245,7 @@ public class GraviteePluginsServiceImpl
     }
 
     @Override
-    public PluginRevision<Policy> buildPolicy(WatchActionContext context, Plugin plugin, GraviteePluginReference pluginRef) {
+    public PluginRevision<Policy> buildPolicy(WatchActionContext context, Plugin plugin, PluginReference pluginRef) {
         PluginRevision<Policy> result = new PluginRevision<>(null);
         try {
             if (plugin != null) {
@@ -263,7 +255,7 @@ public class GraviteePluginsServiceImpl
                     policy.setConfiguration(
                         OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
                     );
-                    result = new PluginRevision<>(policy);
+                    result = new PluginRevision<>(policy, pluginRef, context.getGeneration(), computePolicyHashCode(policy));
                 }
             }
 
@@ -295,11 +287,19 @@ public class GraviteePluginsServiceImpl
     }
 
     @Override
-    public PluginRevision<Resource> buildResource(WatchActionContext context, Plugin plugin, GraviteePluginReference pluginRef) {
+    public PluginRevision<Resource> buildResource(WatchActionContext context, Plugin plugin, PluginReference pluginRef) {
         PluginRevision<Resource> result = new PluginRevision<>(null);
         try {
             if (plugin != null) {
-                // TODO revoir format CRD service pour disposer d'un name
+                if (plugin.defineResource()) {
+                    final Resource resource = new Resource();
+                    resource.setName(buildResourceName(context, plugin.getIdentifier()));
+                    resource.setType(plugin.getResource());
+                    resource.setConfiguration(
+                            OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
+                    );
+                    result = new PluginRevision<>(resource, pluginRef, context.getGeneration(), computeResourceHashCode(resource));
+                }
             }
 
             if (pluginRef != null && !result.isValid()) {
@@ -329,4 +329,5 @@ public class GraviteePluginsServiceImpl
 
         return result;
     }
+
 }

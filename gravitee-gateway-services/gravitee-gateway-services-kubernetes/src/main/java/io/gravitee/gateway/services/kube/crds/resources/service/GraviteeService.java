@@ -16,7 +16,7 @@
 package io.gravitee.gateway.services.kube.crds.resources.service;
 
 import io.gravitee.definition.model.Cors;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
+import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ public class GraviteeService {
 
     private boolean enabled = true;
 
-    private GraviteePluginReference security;
+    private PluginReference security;
 
     private Cors cors;
 
@@ -49,7 +49,7 @@ public class GraviteeService {
     private Map<String, ServiceEndpoint> endpoints = new HashMap<>();
 
     private List<Plugin> resources = new ArrayList();
-    private List<GraviteePluginReference> resourceReferences = new ArrayList();
+    private List<PluginReference> resourceReferences = new ArrayList();
 
     public GraviteeService() {}
 
@@ -73,11 +73,11 @@ public class GraviteeService {
         this.type = type;
     }
 
-    public GraviteePluginReference getSecurity() {
+    public PluginReference getSecurity() {
         return security;
     }
 
-    public void setSecurity(GraviteePluginReference security) {
+    public void setSecurity(PluginReference security) {
         this.security = security;
     }
 

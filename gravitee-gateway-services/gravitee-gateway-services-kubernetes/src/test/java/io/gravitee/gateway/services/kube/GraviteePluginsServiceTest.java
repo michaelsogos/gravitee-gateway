@@ -161,12 +161,12 @@ public class GraviteePluginsServiceTest {
 
     private void populateSecret(String ns, String name, String filename) {
         Secret toCreate = kubernetesServer.getClient().secrets().load(getClass().getResourceAsStream(filename)).get();
-        kubernetesServer.expect().get().withPath("/api/v1/namespaces/" + ns + "/secrets/" + name).andReturn(200, toCreate).always();
+        kubernetesServer.expect().get().withPath("/api/v1/namespaces/" + ns + "/secrets/" + name).andReturn(200, toCreate).once();
     }
 
     private void populatePluginResource(String ns, String name, String filename, boolean mockStatusUpdate) {
         GraviteePlugin resource = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name).andReturn(200, resource).always();
+        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name).andReturn(200, resource).once();
         if (mockStatusUpdate) {
             GraviteePlugin resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
             GraviteePluginStatus status = new GraviteePluginStatus();

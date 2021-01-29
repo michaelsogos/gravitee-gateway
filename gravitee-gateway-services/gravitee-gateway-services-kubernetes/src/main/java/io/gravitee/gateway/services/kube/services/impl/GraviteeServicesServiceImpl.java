@@ -397,7 +397,7 @@ public class GraviteeServicesServiceImpl
     private ServiceWatchActionContext applySecurityPlugin(ServiceWatchActionContext context) {
         Api api = context.getApi();
         if (context.getSubResource().getSecurity() != null) {
-            PluginRevision<Policy> securityPolicy = pluginsService.buildSecurityPolicy(context, context.getSubResource().getSecurity());
+            PluginRevision<Policy> securityPolicy = pluginsService.buildAuthenticationPolicy(context, context.getSubResource().getSecurity());
             if (securityPolicy.isValid()) {
                 final Policy plugin = securityPolicy.getPlugin();
                 LOGGER.info("Api '{}' secured by '{}' policy", plugin.getName());

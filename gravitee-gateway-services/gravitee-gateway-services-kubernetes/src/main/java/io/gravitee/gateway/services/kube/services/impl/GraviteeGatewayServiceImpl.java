@@ -23,6 +23,7 @@ import io.gravitee.definition.model.Policy;
 import io.gravitee.definition.model.plugins.resources.Resource;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
+import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
@@ -107,8 +108,7 @@ public class GraviteeGatewayServiceImpl
                     Flowable
                         .just(context)
                         .map(this::computeBackendConfigHashCode)
-                        .map(this::validatePolicies)
-                        .map(this::validateSecurity)
+                        .map(this::validateAuthentication)
                         .map(this::validateResources)
                         .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
                 break;
@@ -117,8 +117,7 @@ public class GraviteeGatewayServiceImpl
                     Flowable
                         .just(context)
                         .map(this::computeBackendConfigHashCode)
-                        .map(this::validatePolicies)
-                        .map(this::validateSecurity)
+                        .map(this::validateAuthentication)
                         .map(this::validateResources)
                         .map(this::notifyListeners)
                         .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
@@ -128,8 +127,7 @@ public class GraviteeGatewayServiceImpl
                     Flowable
                         .just(context)
                         .map(this::computeBackendConfigHashCode)
-                        .map(this::validatePolicies)
-                        .map(this::validateSecurity)
+                        .map(this::validateAuthentication)
                         .map(this::validateResources)
                         .map(this::notifyListeners)
                         .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
@@ -140,23 +138,14 @@ public class GraviteeGatewayServiceImpl
         return pipeline;
     }
 
-    protected WatchActionContext<GraviteeGateway> validatePolicies(WatchActionContext<GraviteeGateway> context) {
-        LOGGER.debug("Validate and Compute HashCode for policies of GraviteeGateway '{}'", context.getResourceName());
+    protected WatchActionContext<GraviteeGateway> validateAuthentication(WatchActionContext<GraviteeGateway> context) {
+        LOGGER.debug("Validate and Compute HashCode for authentication plugin of GraviteeGateway '{}'", context.getResourceName());
         GraviteeGatewaySpec spec = context.getResource().getSpec();
-        if (spec.getPolicies() != null) {
-            for (GraviteePluginReference pluginRef : spec.getPolicies()) {
-                PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, null, pluginRef);
-                context.getPluginRevisions().add(policy);
-            }
-        }
-        return context;
-    }
-
-    protected WatchActionContext<GraviteeGateway> validateSecurity(WatchActionContext<GraviteeGateway> context) {
-        LOGGER.debug("Validate and Compute HashCode for security plugin of GraviteeGateway '{}'", context.getResourceName());
-        GraviteeGatewaySpec spec = context.getResource().getSpec();
-        if (spec.getSecurity() != null) {
-            PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, null, spec.getSecurity());
+        if (spec.getAuthentication() != null) {
+            PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, spec.getAuthentication(), convertToRef(context, "authenication"));
+            context.getPluginRevisions().add(policy);
+        } else if (spec.getAuthenticationReference() != null) {
+            PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, null, spec.getAuthenticationReference());
             context.getPluginRevisions().add(policy);
         }
         return context;
@@ -165,9 +154,16 @@ public class GraviteeGatewayServiceImpl
     protected WatchActionContext<GraviteeGateway> validateResources(WatchActionContext<GraviteeGateway> context) {
         LOGGER.debug("Validate and Compute HashCode for resources of GraviteeGateway '{}'", context.getResourceName());
         GraviteeGatewaySpec spec = context.getResource().getSpec();
-        if (spec.getResources() != null) {
-            for (GraviteePluginReference pluginRef : spec.getResources()) {
+        if (spec.getResourceReferences() != null) {
+            for (PluginReference pluginRef : spec.getResourceReferences()) {
                 PluginRevision<Resource> resource = graviteePluginsService.buildResource(context, null, pluginRef);
+                context.getPluginRevisions().add(resource);
+            }
+        }
+        if (spec.getResources() != null) {
+            for (Map.Entry<String, Plugin> pluginEntry : spec.getResources().entrySet()) {
+                pluginEntry.getValue().setIdentifier(pluginEntry.getKey()); // use the identifier field to initialize resource name
+                PluginRevision<Resource> resource = graviteePluginsService.buildResource(context, pluginEntry.getValue(),convertToRef(context, pluginEntry.getKey()));
                 context.getPluginRevisions().add(resource);
             }
         }
@@ -219,7 +215,7 @@ public class GraviteeGatewayServiceImpl
             // if some plugins changed in order stop an infinite loop
             status.getHashCodes().setPlugins(newHashCodes);
             status.getHashCodes().setDefaultHttpConfig(context.getHttpConfigHashCode());
-            return context.refreshResource(crdClient.updateStatus(context.getResource()));
+            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
         } else {
             LOGGER.debug("No changes in GravteeGateway '{}', bypass status update", context.getResourceName());
             return context;
@@ -257,7 +253,7 @@ public class GraviteeGatewayServiceImpl
             integration.setMessage(message);
             status.setIntegration(integration);
 
-            return context.refreshResource(crdClient.updateStatus(context.getResource()));
+            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
         } else {
             LOGGER.debug("No changes in GraviteeGateway '{}', bypass status update", context.getResourceName());
             return context;

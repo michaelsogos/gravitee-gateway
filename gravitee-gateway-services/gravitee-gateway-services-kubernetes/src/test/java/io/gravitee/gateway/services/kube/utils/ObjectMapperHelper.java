@@ -16,6 +16,7 @@
 package io.gravitee.gateway.services.kube.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
@@ -28,15 +29,23 @@ import java.util.Map;
 public class ObjectMapperHelper {
 
     private static ObjectMapper jsonMapper = new ObjectMapper();
-    private static Yaml yaml = new Yaml();
+    private static ObjectMapper yaml = new ObjectMapper(new YAMLFactory());
 
     public static <T> T readYamlAs(String file, Class<T> type) {
-        final InputStream resourceAsStream = ObjectMapperHelper.class.getResourceAsStream(file);
-        return yaml.loadAs(resourceAsStream, type);
+        try {
+            final InputStream resourceAsStream = ObjectMapperHelper.class.getResourceAsStream(file);
+            return yaml.readValue(resourceAsStream, type);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public static String yamlToJson(String file) throws Exception {
-        final InputStream resourceAsStream = ObjectMapperHelper.class.getResourceAsStream(file);
-        return jsonMapper.writeValueAsString(yaml.loadAs(resourceAsStream, Map.class));
+    public static String yamlToJson(String file) {
+        try {
+            final InputStream resourceAsStream = ObjectMapperHelper.class.getResourceAsStream(file);
+            return jsonMapper.writeValueAsString(yaml.readValue(resourceAsStream, Map.class));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

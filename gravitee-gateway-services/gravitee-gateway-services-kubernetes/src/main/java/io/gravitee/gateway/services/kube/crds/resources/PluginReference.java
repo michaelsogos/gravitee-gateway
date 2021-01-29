@@ -19,14 +19,14 @@ package io.gravitee.gateway.services.kube.crds.resources;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GraviteePluginReference {
+public class PluginReference {
 
     public static final String DEFAULT_NAMESPACE = "default";
     private String namespace = DEFAULT_NAMESPACE;
     private String resource;
     private String name;
 
-    public GraviteePluginReference() {}
+    public PluginReference() {}
 
     public String getNamespace() {
         return namespace;

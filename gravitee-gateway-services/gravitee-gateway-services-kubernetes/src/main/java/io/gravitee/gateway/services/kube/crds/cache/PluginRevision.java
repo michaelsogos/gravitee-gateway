@@ -15,7 +15,7 @@
  */
 package io.gravitee.gateway.services.kube.crds.cache;
 
-import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
+import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -23,7 +23,7 @@ import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
  */
 public class PluginRevision<T> {
 
-    private final GraviteePluginReference pluginReference;
+    private final PluginReference pluginReference;
     private final long generation;
     private final T plugin;
     private final String hashCode;
@@ -32,14 +32,14 @@ public class PluginRevision<T> {
         this(plugin, null, -1, null);
     }
 
-    public PluginRevision(T plugin, GraviteePluginReference pluginReference, long generation, String hashCode) {
+    public PluginRevision(T plugin, PluginReference pluginReference, long generation, String hashCode) {
         this.pluginReference = pluginReference;
         this.generation = generation;
         this.plugin = plugin;
         this.hashCode = hashCode;
     }
 
-    public GraviteePluginReference getPluginReference() {
+    public PluginReference getPluginReference() {
         return pluginReference;
     }
 

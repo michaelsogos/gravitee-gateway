@@ -22,7 +22,7 @@ import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.DoneableGraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginList;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
+import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
@@ -35,9 +35,9 @@ import io.reactivex.Flowable;
 public interface GraviteePluginsService {
     void registerListener(GraviteePluginsListener listener);
 
-    PluginRevision<Policy> buildPolicy(WatchActionContext context, Plugin plugin, GraviteePluginReference pluginRef);
-    PluginRevision<Policy> buildSecurityPolicy(WatchActionContext context, GraviteePluginReference pluginRef);
-    PluginRevision<Resource> buildResource(WatchActionContext context, Plugin plugin, GraviteePluginReference pluginRef);
+    PluginRevision<Policy> buildPolicy(WatchActionContext context, Plugin plugin, PluginReference pluginRef);
+    PluginRevision<Policy> buildAuthenticationPolicy(WatchActionContext context, PluginReference pluginRef);
+    PluginRevision<Resource> buildResource(WatchActionContext context, Plugin plugin, PluginReference pluginRef);
 
     Flowable<WatchActionContext<GraviteePlugin>> processAction(WatchActionContext<GraviteePlugin> context);
 

@@ -13,19 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 apiVersion: "gravitee.io/v1alpha1"
 kind: GraviteeGateway
 metadata:
-  name: internal-gw
+  name: internal-gw-ref
+  namespace: default
+  generation: 1
 spec:
-  authentication:
-    resource: "internal-gw-plugins"
-    name: "oauth2"
+  authenticationReference:
+    resource: "mygateway-plugins"
+    name: "jwt-poc"
   resourceReferences:
     - namespace: "default"
-      resource: "internal-gw-plugins"
-      name: "cache"
+      resource: "mygateway-plugins"
+      name: "oauth2-resource"
   defaultBackendConfigurations:
     httpClient:
       connectTimeout: 5000

@@ -19,8 +19,10 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.fabric8.kubernetes.client.server.mock.KubernetesServer;
 import io.gravitee.gateway.services.kube.managers.GraviteePluginsManager;
+import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.KubernetesService;
+import io.gravitee.gateway.services.kube.services.impl.GraviteeGatewayServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.GraviteePluginsServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.KubernetesServiceImpl;
 import org.springframework.context.annotation.Bean;
@@ -48,13 +50,14 @@ public class KubeSyncTestConfig {
     }
 
     @Bean
-    public GraviteePluginsManager graviteePluginsManager() {
-        return new GraviteePluginsManager();
-    }
-
-    @Bean
     public GraviteePluginsService graviteePluginsService() {
         return new GraviteePluginsServiceImpl();
+    }
+
+
+    @Bean
+    public GraviteeGatewayService graviteeGatewayService() {
+        return new GraviteeGatewayServiceImpl();
     }
 
     @Bean

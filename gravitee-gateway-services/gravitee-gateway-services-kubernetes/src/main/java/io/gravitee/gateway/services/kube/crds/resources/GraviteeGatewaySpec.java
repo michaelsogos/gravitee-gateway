@@ -15,6 +15,7 @@
  */
 package io.gravitee.gateway.services.kube.crds.resources;
 
+import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration;
 
 import java.util.ArrayList;
@@ -29,35 +30,44 @@ import java.util.Map;
 public class GraviteeGatewaySpec {
 
     private Map<String, String> selectors = new HashMap<>();
-    private List<GraviteePluginReference> policies = new ArrayList<>();
-    private List<GraviteePluginReference> resources = new ArrayList<>();
-    private GraviteePluginReference security;
+    private Map<String, Plugin> resources = new HashMap<>();
+    private List<PluginReference> resourceReferences = new ArrayList<>();
+    private PluginReference authenticationReference;
+    private Plugin authentication;
     private BackendConfiguration defaultBackendConfigurations;
 
     public GraviteeGatewaySpec() {}
 
-    public List<GraviteePluginReference> getPolicies() {
-        return policies;
-    }
-
-    public void setPolicies(List<GraviteePluginReference> policies) {
-        this.policies = policies;
-    }
-
-    public List<GraviteePluginReference> getResources() {
+    public Map<String, Plugin> getResources() {
         return resources;
     }
 
-    public void setResources(List<GraviteePluginReference> resources) {
+    public void setResources(Map<String, Plugin> resources) {
         this.resources = resources;
     }
 
-    public GraviteePluginReference getSecurity() {
-        return security;
+    public List<PluginReference> getResourceReferences() {
+        return resourceReferences;
     }
 
-    public void setSecurity(GraviteePluginReference security) {
-        this.security = security;
+    public void setResourceReferences(List<PluginReference> resourceReferences) {
+        this.resourceReferences = resourceReferences;
+    }
+
+    public PluginReference getAuthenticationReference() {
+        return authenticationReference;
+    }
+
+    public void setAuthenticationReference(PluginReference authenticationReference) {
+        this.authenticationReference = authenticationReference;
+    }
+
+    public Plugin getAuthentication() {
+        return authentication;
+    }
+
+    public void setAuthentication(Plugin authentication) {
+        this.authentication = authentication;
     }
 
     public Map<String, String> getSelectors() {
@@ -78,6 +88,6 @@ public class GraviteeGatewaySpec {
 
     @Override
     public String toString() {
-        return "GraviteeGatewaySpec{" + "policies=" + policies + ", resources=" + resources + ", security=" + security + '}';
+        return "GraviteeGatewaySpec{resources=" + resources + ", authentication=" + authentication + '}';
     }
 }

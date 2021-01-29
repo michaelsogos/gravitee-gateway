@@ -17,7 +17,7 @@ package io.gravitee.gateway.services.kube.crds.resources.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.gravitee.common.http.HttpMethod;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
+import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 
 import java.util.HashSet;
@@ -32,7 +32,7 @@ public class PathRule {
     private Set<HttpMethod> methods = new HashSet<>();
 
     @JsonProperty("policyReference")
-    private GraviteePluginReference policyRef;
+    private PluginReference policyRef;
 
     private Plugin policy;
 
@@ -46,11 +46,11 @@ public class PathRule {
         this.methods = methods;
     }
 
-    public GraviteePluginReference getPolicyRef() {
+    public PluginReference getPolicyRef() {
         return policyRef;
     }
 
-    public void setPolicyRef(GraviteePluginReference policyRef) {
+    public void setPolicyRef(PluginReference policyRef) {
         this.policyRef = policyRef;
     }
 

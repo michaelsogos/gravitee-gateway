@@ -21,10 +21,10 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayReference;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteePluginReference;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
+import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
 import io.gravitee.gateway.services.kube.services.KubernetesService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -71,7 +71,15 @@ public class AbstractServiceImpl<A extends CustomResource, B, C> {
         return newHashCodes;
     }
 
-    public static String getReferenceNamespace(WatchActionContext context, GraviteePluginReference pluginRef) {
+    protected PluginReference convertToRef(WatchActionContext<A> context, String name) {
+        PluginReference ref = new PluginReference();
+        ref.setName(name);
+        ref.setNamespace(context.getNamespace());
+        ref.setResource(context.getResourceName());
+        return ref;
+    }
+
+    public static String getReferenceNamespace(WatchActionContext context, PluginReference pluginRef) {
         return Optional.ofNullable(pluginRef.getNamespace()).orElse(context.getNamespace());
     }
 
@@ -79,7 +87,7 @@ public class AbstractServiceImpl<A extends CustomResource, B, C> {
         return Optional.ofNullable(gwReference.getNamespace()).orElse(namespace);
     }
 
-    public static String buildQualifiedPluginName(WatchActionContext context, GraviteePluginReference pluginRef) {
+    public static String buildQualifiedPluginName(WatchActionContext context, PluginReference pluginRef) {
         return pluginRef.getName() + "." + pluginRef.getResource() + "." + getReferenceNamespace(context, pluginRef);
     }
 }
