@@ -15,9 +15,6 @@
  */
 package io.gravitee.gateway.services.kube;
 
-import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.client.server.mock.KubernetesServer;
-import io.gravitee.common.util.Maps;
 import io.gravitee.definition.model.Policy;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
@@ -27,17 +24,16 @@ import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
 import io.gravitee.gateway.services.kube.utils.ObjectMapperHelper;
 import io.reactivex.subscribers.TestSubscriber;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
@@ -46,13 +42,7 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = KubeSyncTestConfig.class)
-public class GraviteePluginsServiceTest {
-
-    @Autowired
-    public KubernetesServer kubernetesServer;
-
-    @Autowired
-    protected ApplicationContext applicationContext;
+public class GraviteePluginsServiceTest extends AbstractServiceTest {
 
     @Autowired
     protected GraviteePluginsService cut;
@@ -158,22 +148,5 @@ public class GraviteePluginsServiceTest {
 
         verify(listener, never()).onPluginsUpdate(any());
     }
-
-    private void populateSecret(String ns, String name, String filename) {
-        Secret toCreate = kubernetesServer.getClient().secrets().load(getClass().getResourceAsStream(filename)).get();
-        kubernetesServer.expect().get().withPath("/api/v1/namespaces/" + ns + "/secrets/" + name).andReturn(200, toCreate).once();
-    }
-
-    private void populatePluginResource(String ns, String name, String filename, boolean mockStatusUpdate) {
-        GraviteePlugin resource = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name).andReturn(200, resource).once();
-        if (mockStatusUpdate) {
-            GraviteePlugin resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
-            GraviteePluginStatus status = new GraviteePluginStatus();
-            resourceWithStatus.setStatus(status);
-            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name +"/status").andReturn(200, resourceWithStatus).always();
-        }
-    }
-
 
 }

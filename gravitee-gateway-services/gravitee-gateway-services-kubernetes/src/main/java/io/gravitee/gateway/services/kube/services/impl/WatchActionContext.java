@@ -85,5 +85,6 @@ public class WatchActionContext<T extends CustomResource> {
         MODIFIED,
         DELETED,
         REFERENCE_UPDATED,
+        NONE,
     }
 }

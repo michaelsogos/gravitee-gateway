@@ -40,8 +40,8 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
     private Date deployedAt;
 
     private boolean planRequired = true;
-    private String security;
-    private String securityDefinition = "{}";
+    private String authentication;
+    private String authenticationDefinition = "{}";
 
     public Api() {
     }
@@ -92,20 +92,20 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         this.planRequired = planRequired;
     }
 
-    public String getSecurity() {
-        return security;
+    public String getAuthentication() {
+        return authentication;
     }
 
-    public void setSecurity(String security) {
-        this.security = security;
+    public void setAuthentication(String authentication) {
+        this.authentication = authentication;
     }
 
-    public String getSecurityDefinition() {
-        return securityDefinition;
+    public String getAuthenticationDefinition() {
+        return authenticationDefinition;
     }
 
-    public void setSecurityDefinition(String securityDefinition) {
-        this.securityDefinition = securityDefinition;
+    public void setAuthenticationDefinition(String authenticationDefinition) {
+        this.authenticationDefinition = authenticationDefinition;
     }
 
     public boolean isEnabled() {
@@ -144,7 +144,7 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         Set<io.gravitee.definition.model.Policy> policies = new HashSet<>();
 
         if (!this.isPlanRequired()) {
-            String security = this.security.toUpperCase();
+            String security = this.authentication.toUpperCase();
             Policy secPolicy = buildSecurityPolicy(security);
 
             if (secPolicy.getName() != null) {

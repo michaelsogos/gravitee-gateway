@@ -32,7 +32,7 @@ import java.util.List;
  */
 public class ServiceWatchActionContext extends WatchActionContext<GraviteeServices> {
 
-    private final GraviteeService subResource;
+    private final GraviteeService serviceResource;
     private final String serviceName;
 
     private Api api; // TODO use the right reactable type
@@ -55,9 +55,9 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
      */
     private List<PluginRevision> pluginRevisions = new ArrayList<>();
 
-    public ServiceWatchActionContext(WatchActionContext<GraviteeServices> origin, GraviteeService subResource, String name) {
+    public ServiceWatchActionContext(WatchActionContext<GraviteeServices> origin, GraviteeService serviceResource, String name) {
         super(origin.getResource(), origin.getEvent());
-        this.subResource = subResource;
+        this.serviceResource = serviceResource;
         this.serviceName = name;
     }
 
@@ -65,8 +65,8 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
         return serviceName;
     }
 
-    public GraviteeService getSubResource() {
-        return subResource;
+    public GraviteeService getServiceResource() {
+        return serviceResource;
     }
 
     public Api getApi() {

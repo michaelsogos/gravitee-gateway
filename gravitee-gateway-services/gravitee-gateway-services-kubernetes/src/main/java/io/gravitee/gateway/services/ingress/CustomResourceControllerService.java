@@ -360,12 +360,12 @@ public class CustomResourceControllerService extends AbstractService {
             LOGGER.info("applySecurityConfiguration==> '{}'", securityPolicy.get().getName());
             if ("key_less".equalsIgnoreCase(securityPolicy.get().getName())) {
                 LOGGER.info("applySecurityConfiguration==> key_less");
-                api.setSecurity("key_less");
+                api.setAuthentication("key_less");
                 applied = true;
             } else if ("jwt".equalsIgnoreCase(securityPolicy.get().getName())) {
                 LOGGER.info("applySecurityConfiguration==> jwt");
-                api.setSecurity("JWT");
-                api.setSecurityDefinition( securityPolicy.get().getConfiguration());
+                api.setAuthentication("JWT");
+                api.setAuthenticationDefinition( securityPolicy.get().getConfiguration());
                 applied = true;
             } // TODO other
         }

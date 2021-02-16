@@ -16,19 +16,20 @@
 package io.gravitee.gateway.services.kube;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.fabric8.kubernetes.client.server.mock.KubernetesServer;
-import io.gravitee.gateway.services.kube.managers.GraviteePluginsManager;
+import io.gravitee.gateway.handlers.api.manager.ApiManager;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
+import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
 import io.gravitee.gateway.services.kube.services.KubernetesService;
 import io.gravitee.gateway.services.kube.services.impl.GraviteeGatewayServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.GraviteePluginsServiceImpl;
+import io.gravitee.gateway.services.kube.services.impl.GraviteeServicesServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.KubernetesServiceImpl;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
+
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -54,14 +55,23 @@ public class KubeSyncTestConfig {
         return new GraviteePluginsServiceImpl();
     }
 
-
     @Bean
     public GraviteeGatewayService graviteeGatewayService() {
         return new GraviteeGatewayServiceImpl();
     }
 
     @Bean
+    public GraviteeServicesService graviteeServicesService() {
+        return new GraviteeServicesServiceImpl();
+    }
+
+    @Bean
     public KubernetesService kubernetesService(KubernetesClient client) {
         return new KubernetesServiceImpl(client);
+    }
+
+    @Bean
+    public ApiManager mockApiManager() {
+        return mock(ApiManager.class);
     }
 }

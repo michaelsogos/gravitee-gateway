@@ -153,21 +153,28 @@ public class GraviteeGatewayServiceImpl
 
     protected WatchActionContext<GraviteeGateway> validateResources(WatchActionContext<GraviteeGateway> context) {
         LOGGER.debug("Validate and Compute HashCode for resources of GraviteeGateway '{}'", context.getResourceName());
+        extractResources(context).forEach(context.getPluginRevisions()::add);
+        return context;
+    }
+
+    @Override
+    public List<PluginRevision<Resource>> extractResources(WatchActionContext<GraviteeGateway> context) {
+        List<PluginRevision<Resource>> accumulator = new ArrayList<>();
         GraviteeGatewaySpec spec = context.getResource().getSpec();
         if (spec.getResourceReferences() != null) {
             for (PluginReference pluginRef : spec.getResourceReferences()) {
                 PluginRevision<Resource> resource = graviteePluginsService.buildResource(context, null, pluginRef);
-                context.getPluginRevisions().add(resource);
+                accumulator.add(resource);
             }
         }
         if (spec.getResources() != null) {
             for (Map.Entry<String, Plugin> pluginEntry : spec.getResources().entrySet()) {
                 pluginEntry.getValue().setIdentifier(pluginEntry.getKey()); // use the identifier field to initialize resource name
                 PluginRevision<Resource> resource = graviteePluginsService.buildResource(context, pluginEntry.getValue(),convertToRef(context, pluginEntry.getKey()));
-                context.getPluginRevisions().add(resource);
+                accumulator.add(resource);
             }
         }
-        return context;
+        return accumulator;
     }
 
     protected WatchActionContext<GraviteeGateway> computeBackendConfigHashCode(WatchActionContext<GraviteeGateway> context) {

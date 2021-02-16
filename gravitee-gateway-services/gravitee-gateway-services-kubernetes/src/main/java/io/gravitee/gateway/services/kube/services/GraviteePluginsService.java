@@ -36,7 +36,6 @@ public interface GraviteePluginsService {
     void registerListener(GraviteePluginsListener listener);
 
     PluginRevision<Policy> buildPolicy(WatchActionContext context, Plugin plugin, PluginReference pluginRef);
-    PluginRevision<Policy> buildAuthenticationPolicy(WatchActionContext context, PluginReference pluginRef);
     PluginRevision<Resource> buildResource(WatchActionContext context, Plugin plugin, PluginReference pluginRef);
 
     Flowable<WatchActionContext<GraviteePlugin>> processAction(WatchActionContext<GraviteePlugin> context);

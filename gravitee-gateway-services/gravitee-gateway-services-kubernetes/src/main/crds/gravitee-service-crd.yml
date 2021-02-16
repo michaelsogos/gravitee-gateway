@@ -65,54 +65,66 @@ spec:
                         "
                         default: "api"
                         enum: ["managedApi", "api"]
-                      security:
+                      authenticationReference:
+                        description: Reference to a Policy definition used to authenticate the client application. (ignored if authentication field is present)
                         type: object
-                        description: "
-                          For type 'api': Security policy to apply to this service, override the one defined by GraviteeGateway if any.
-                          For type 'managedApi': security policy is ignored and provided by plan
-                        "
                         properties:
                           namespace:
                             type: string
-                            default: "default"
+                            default: default
                             description: Namespace where the CustomResource is defined
                           resource:
                             type: string
                             description: The CustomResource name
                           name:
                             type: string
-                            description: The name of security policy into the CustomResource
+                            description: The name of the policy used to authenticate application as defined into the CustomResource
                         required: ["name", "resource"]
+                      authentication:
+                        description: Policy definition used to authenticate the client application.
+                        type: object
+                        properties:
+                          policy:
+                            type: string
+                            description: Policy Plugin identifier (jwt, key_less...)
+                          configuration:
+                            type: object
+                            description: Map containing the policy configuration (map structure based on the kind of plugin)
+                            x-kubernetes-preserve-unknown-fields: true
+                        required: ["policy"]
                       cors:
                         type: object
                         additionalProperties: true
                       resourceReferences:
                         type: array
+                        default: [ ]
                         items:
                           type: object
                           properties:
                             namespace:
                               type: string
-                              default: default
-                              description: Namespace where the CustomResource is defined, take namespace of the gravitee-service custom resource if missing
+                              default: "default"
+                              description: Namespace where the CustomResource is defined
                             resource:
                               type: string
                               description: The CustomResource name
                             name:
                               type: string
-                              description: The name of security policy into the CustomResource
+                              description: The name of resource plugin into the CustomResource
+                          required: [ "name", "resource" ]
                       resources:
-                        type: array
-                        items:
+                        type: object
+                        additionalProperties:
                           type: object
                           properties:
-                            identifier:
+                            resource:
                               type: string
-                              description: Plugin identifier (cache...)
+                              description: resource plugin id (oauth2, oauth2-am-resource...)
                             configuration:
                               type: object
                               description: Map containing the pluging configuration (map structure based on the kind of plugin)
                               x-kubernetes-preserve-unknown-fields: true
+                          required: [ "resource", "configuration" ]
                       vhosts:
                         type: array
                         items:

@@ -17,19 +17,27 @@
 apiVersion: "gravitee.io/v1alpha1"
 kind: GraviteeServices
 metadata:
-  name: internal-gw-services
+  name: test-single-standalone
+  namespace: default
+  generation: 1
 spec:
   enabled: true # allow to disable all services of this CRD
-  gateway:
-    name: internal-gw
-    namespace: default
   services:
-    my-toto-api:
+    my-api:
       type: api
-      security:
-        name: jwt-poc
-        resource: internal-gw-plugins
-        # if namespace is missing, use the same NS as the current CR
+      authentication:
+        policy: jwt
+        configuration:
+          signature: "HMAC_HS256"
+          publicKeyResolver: "GIVEN_KEY"
+          useSystemProxy: false
+          extractClaims: false
+          propagateAuthHeader: true
+          resolverParameter:
+            valueFrom:
+              secretKeyRef:
+                name: myapp
+                key: myapp-password
       cors:
         enabled: false
       vhosts:
@@ -41,13 +49,6 @@ spec:
           rules: []
         - prefix: "/other-path/"
           rules:
-            - methods: ["POST"] # ALL if empty
-              # si l'entrée policy est définie, la policy gagne sur la policyRef
-              policyReference:
-                resource: internal-gw-plugins
-                name: rate-limit
-                namespace: default
-                # if namespace is missing, use the same NS as the current CR
             - methods: ["PUT"]
               # pouvoir redef la policy
               policy:
@@ -59,6 +60,13 @@ spec:
                     periodTime: 2
                     periodTimeUnit: "HOURS"
                     limit: 1000
+            - methods: ["GET"]
+              # pouvoir redef la policy
+              policy:
+                identifier: policy-http-callout
+                configuration:
+                  scope: REQUEST
+                  url: http://localhost/callout
       endpoints:
         default-group:
           loadBalancing: round-robin
@@ -72,3 +80,11 @@ spec:
             # namespace: use the ns of this CRD...
             port: 9200
             weight: 1
+      resources:
+        my-oauth2-res:
+          resource: oauth2
+          configuration:
+            authorizationServerUrl: e
+            introspectionEndpoint: e
+            clientId: e
+            clientSecret: e

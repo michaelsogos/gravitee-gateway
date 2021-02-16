@@ -19,15 +19,15 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import io.gravitee.definition.model.*;
+import io.gravitee.definition.model.VirtualHost;
 import io.gravitee.definition.model.endpoint.HttpEndpoint;
+import io.gravitee.definition.model.plugins.resources.Resource;
 import io.gravitee.gateway.handlers.api.definition.Api;
+import io.gravitee.gateway.handlers.api.manager.ApiManager;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
-import io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration;
-import io.gravitee.gateway.services.kube.crds.resources.service.BackendService;
-import io.gravitee.gateway.services.kube.crds.resources.service.ServiceEndpoint;
-import io.gravitee.gateway.services.kube.crds.resources.service.ServicePath;
+import io.gravitee.gateway.services.kube.crds.resources.service.*;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
@@ -62,6 +62,9 @@ public class GraviteeServicesServiceImpl
 
     @Autowired
     private GraviteeGatewayService gatewayService;
+
+    @Autowired
+    private ApiManager apiManager;
 
     private void initializeGraviteeServicesClient(KubernetesClient client) {
         LOGGER.debug("Creating CRD Client for 'gravitee-services'");
@@ -102,7 +105,8 @@ public class GraviteeServicesServiceImpl
                         .map(this::prepareApi)
                         .map(this::buildApiPaths)
                         .map(this::buildApiProxy)
-                        .map(this::applySecurityPlugin)
+                        .map(this::buildApiResources)
+                        .map(this::applyAuthenticationPlugin)
                         .map(this::addService)
                         .map(this::preserveApiData);
                 break;
@@ -113,7 +117,8 @@ public class GraviteeServicesServiceImpl
                         .map(this::prepareApi)
                         .map(this::buildApiPaths)
                         .map(this::buildApiProxy)
-                        .map(this::applySecurityPlugin)
+                        .map(this::buildApiResources)
+                        .map(this::applyAuthenticationPlugin)
                         .map(this::updateService)
                         .map(this::preserveApiData);
                 break;
@@ -124,7 +129,8 @@ public class GraviteeServicesServiceImpl
                         .map(this::prepareApi)
                         .map(this::buildApiPaths)
                         .map(this::buildApiProxy)
-                        .map(this::applySecurityPlugin)
+                        .map(this::buildApiResources)
+                        .map(this::applyAuthenticationPlugin)
                         .map(this::updateService)
                         .map(this::preserveApiData);
                 break;
@@ -174,7 +180,7 @@ public class GraviteeServicesServiceImpl
     public ServiceWatchActionContext addService(ServiceWatchActionContext context) {
         if (context.getApi().isEnabled()) {
             LOGGER.info("Deploy Api '{}'", context.getApi().getId());
-            // TODO apiManager.deploy(api);
+            apiManager.register(context.getApi());
         } else {
             LOGGER.debug("Ignore disabled Api '{}'", context.getApi().getId());
         }
@@ -206,14 +212,16 @@ public class GraviteeServicesServiceImpl
     public ServiceWatchActionContext lookupGatewayRef(ServiceWatchActionContext context) {
         // TODO do this only once for all Services
         GraviteeGatewayReference gatewayReference = context.getResource().getSpec().getGateway();
-        GraviteeGateway gw = gatewayService.lookup(context, gatewayReference);
-        context.setGateway(gw);
+        if (gatewayReference != null) {
+            GraviteeGateway gw = gatewayService.lookup(context, gatewayReference);
+            context.setGateway(gw);
 
-        BackendConfiguration backendConfiguration = gw.getSpec().getDefaultBackendConfigurations();
-        if (backendConfiguration != null) {
-            String gwNamespace = gw.getMetadata().getNamespace();
-            buildHttpClientSslOptions(kubernetesService.resolveSecret(context, gwNamespace, backendConfiguration.getHttpClientSslOptions())).ifPresent(context::setGatewaySslOptions);
-            buildHttpProxy(kubernetesService.resolveSecret(context, gwNamespace, backendConfiguration.getHttpProxy())).ifPresent(context::setGatewayProxyConf);
+            BackendConfiguration backendConfiguration = gw.getSpec().getDefaultBackendConfigurations();
+            if (backendConfiguration != null) {
+                String gwNamespace = gw.getMetadata().getNamespace();
+                buildHttpClientSslOptions(kubernetesService.resolveSecret(context, gwNamespace, backendConfiguration.getHttpClientSslOptions())).ifPresent(context::setGatewaySslOptions);
+                buildHttpProxy(kubernetesService.resolveSecret(context, gwNamespace, backendConfiguration.getHttpProxy())).ifPresent(context::setGatewayProxyConf);
+            }
         }
         return context;
     }
@@ -222,16 +230,48 @@ public class GraviteeServicesServiceImpl
         Api api = new Api();
         api.setName(context.getServiceName());
         api.setId(context.buildApiId());
-        api.setEnabled(context.getSubResource().isEnabled() && context.getResource().getSpec().isEnabled());
+        api.setEnabled(context.getServiceResource().isEnabled() && context.getResource().getSpec().isEnabled());
         api.setPlanRequired(false); // TODO maybe useless for the right reactable type
         context.setApi(api);
+        return context;
+    }
+
+    private ServiceWatchActionContext buildApiResources(ServiceWatchActionContext context) {
+        GraviteeService service = context.getServiceResource();
+        List<Resource> resources = context.getApi().getResources();
+        if (resources == null) {
+            resources = new ArrayList<>();
+            context.getApi().setResources(resources);
+        }
+
+        if (service.getResourceReferences() != null) {
+            for (PluginReference pluginRef : service.getResourceReferences()) {
+                PluginRevision<Resource> resource = pluginsService.buildResource(context, null, pluginRef);
+                resources.add(resource.getPlugin());
+            }
+        }
+
+        if (service.getResources() != null) {
+            for (Map.Entry<String, Plugin> pluginEntry : service.getResources().entrySet()) {
+                pluginEntry.getValue().setIdentifier(pluginEntry.getKey()); // use the identifier field to initialize resource name
+                PluginRevision<Resource> resource = pluginsService.buildResource(context, pluginEntry.getValue(),convertToRef(context, pluginEntry.getKey()));
+                resources.add(resource.getPlugin());
+            }
+        }
+
+        if (context.getGateway() != null) {
+            for (PluginRevision<Resource> rev : gatewayService.extractResources(new WatchActionContext<>(context.getGateway(), WatchActionContext.Event.NONE))) {
+                resources.add(rev.getPlugin());
+            }
+        }
+
         return context;
     }
 
     private ServiceWatchActionContext buildApiPaths(ServiceWatchActionContext context) {
         Api api = context.getApi();
 
-        List<ServicePath> svcPaths = context.getSubResource().getPaths();
+        List<ServicePath> svcPaths = context.getServiceResource().getPaths();
         Map<String, Path> apiPaths = svcPaths
             .stream()
             .map(
@@ -287,7 +327,7 @@ public class GraviteeServicesServiceImpl
         Proxy proxy = new Proxy();
         proxy.setVirtualHosts(
             context
-                .getSubResource()
+                .getServiceResource()
                 .getVhosts()
                 .stream()
                 .filter(
@@ -305,7 +345,7 @@ public class GraviteeServicesServiceImpl
                 .collect(Collectors.toList())
         );
         proxy.setGroups(buildEndpoints(context));
-        proxy.setCors(context.getSubResource().getCors());
+        proxy.setCors(context.getServiceResource().getCors());
         // TODO preserve host
         // proxy.setPreserveHost();
         // TODO stripContextPath
@@ -316,7 +356,7 @@ public class GraviteeServicesServiceImpl
     }
 
     private Set<EndpointGroup> buildEndpoints(ServiceWatchActionContext context) {
-        Map<String, ServiceEndpoint> endpoints = context.getSubResource().getEndpoints();
+        Map<String, ServiceEndpoint> endpoints = context.getServiceResource().getEndpoints();
         return endpoints
             .entrySet()
             .stream()
@@ -394,23 +434,40 @@ public class GraviteeServicesServiceImpl
             .collect(Collectors.toSet());
     }
 
-    private ServiceWatchActionContext applySecurityPlugin(ServiceWatchActionContext context) {
+    private ServiceWatchActionContext applyAuthenticationPlugin(ServiceWatchActionContext context) {
         Api api = context.getApi();
-        if (context.getSubResource().getSecurity() != null) {
-            PluginRevision<Policy> securityPolicy = pluginsService.buildAuthenticationPolicy(context, context.getSubResource().getSecurity());
-            if (securityPolicy.isValid()) {
-                final Policy plugin = securityPolicy.getPlugin();
-                LOGGER.info("Api '{}' secured by '{}' policy", plugin.getName());
-                if ("key_less".equalsIgnoreCase(plugin.getName())) {
-                    api.setSecurity("key_less");
-                } else if ("jwt".equalsIgnoreCase(plugin.getName())) {
-                    api.setSecurity("JWT");
-                    api.setSecurityDefinition(plugin.getConfiguration());
-                } // TODO other
+        if (context.getServiceResource().getAuthentication() != null) {
+            PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, context.getServiceResource().getAuthentication(), null);
+            setAuthenticationPlugin(api, authenticationPolicy);
+        } else if (context.getServiceResource().getAuthenticationReference() != null) {
+            PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, null, context.getServiceResource().getAuthenticationReference());
+            setAuthenticationPlugin(api, authenticationPolicy);
+        } else if (context.getGateway() != null) {
+            GraviteeGateway gateway = context.getGateway();
+            if (gateway.getSpec().getAuthentication() != null) {
+                PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, gateway.getSpec().getAuthentication(), null);
+                setAuthenticationPlugin(api, authenticationPolicy);
+            } else if (gateway.getSpec().getAuthenticationReference() != null) {
+                PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, null, gateway.getSpec().getAuthenticationReference());
+                setAuthenticationPlugin(api, authenticationPolicy);
             }
-        } else {
-            // TODO if gw not null && gw security not null apply otherwise error;
         }
         return context;
+    }
+
+    private void setAuthenticationPlugin(Api api, PluginRevision<Policy> authenticationPolicy) {
+        if (authenticationPolicy.isValid()) {
+            final Policy plugin = authenticationPolicy.getPlugin();
+            LOGGER.info("Api '{}' authenticated by '{}' policy", plugin.getName());
+            if ("key_less".equalsIgnoreCase(plugin.getName())) {
+                api.setAuthentication("key_less");
+            } else if ("jwt".equalsIgnoreCase(plugin.getName())) {
+                api.setAuthentication("JWT");
+                api.setAuthenticationDefinition(plugin.getConfiguration());
+            } else if ("oauth2".equalsIgnoreCase(plugin.getName())) {
+                api.setAuthentication("OAUTH2");
+                api.setAuthenticationDefinition(plugin.getConfiguration());
+            }
+        }
     }
 }

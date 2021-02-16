@@ -19,7 +19,6 @@ import io.gravitee.gateway.handlers.api.definition.Api;
 import io.gravitee.gateway.security.core.AuthenticationHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +48,7 @@ public class FreePlanAuthenticationHandlerEnhancer extends PlanBasedAuthenticati
 
             Optional<AuthenticationHandler> optionalProvider = authenticationHandlers
                     .stream()
-                    .filter(provider -> provider.name().equalsIgnoreCase(getApi().getSecurity()))
+                    .filter(provider -> provider.name().equalsIgnoreCase(getApi().getAuthentication()))
                     .findFirst();
 
             if (optionalProvider.isPresent()) {

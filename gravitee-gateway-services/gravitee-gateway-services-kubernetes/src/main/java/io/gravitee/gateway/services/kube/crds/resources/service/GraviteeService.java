@@ -38,7 +38,9 @@ public class GraviteeService {
 
     private boolean enabled = true;
 
-    private PluginReference security;
+    private PluginReference authenticationReference;
+
+    private Plugin authentication;
 
     private Cors cors;
 
@@ -48,8 +50,9 @@ public class GraviteeService {
 
     private Map<String, ServiceEndpoint> endpoints = new HashMap<>();
 
-    private List<Plugin> resources = new ArrayList();
-    private List<PluginReference> resourceReferences = new ArrayList();
+    private Map<String, Plugin> resources = new HashMap<>();
+
+    private List<PluginReference> resourceReferences = new ArrayList<>();
 
     public GraviteeService() {}
 
@@ -73,12 +76,20 @@ public class GraviteeService {
         this.type = type;
     }
 
-    public PluginReference getSecurity() {
-        return security;
+    public PluginReference getAuthenticationReference() {
+        return authenticationReference;
     }
 
-    public void setSecurity(PluginReference security) {
-        this.security = security;
+    public void setAuthenticationReference(PluginReference authenticationReference) {
+        this.authenticationReference = authenticationReference;
+    }
+
+    public Plugin getAuthentication() {
+        return authentication;
+    }
+
+    public void setAuthentication(Plugin authentication) {
+        this.authentication = authentication;
     }
 
     public Cors getCors() {
@@ -121,6 +132,22 @@ public class GraviteeService {
         this.enabled = enabled;
     }
 
+    public Map<String, Plugin> getResources() {
+        return resources;
+    }
+
+    public void setResources(Map<String, Plugin> resources) {
+        this.resources = resources;
+    }
+
+    public List<PluginReference> getResourceReferences() {
+        return resourceReferences;
+    }
+
+    public void setResourceReferences(List<PluginReference> resourceReferences) {
+        this.resourceReferences = resourceReferences;
+    }
+
     @Override
     public String toString() {
         return (
@@ -133,7 +160,7 @@ public class GraviteeService {
             ", enable=" +
             enabled +
             ", security=" +
-            security +
+                    authenticationReference +
             ", cors=" +
             cors +
             ", vhosts=" +

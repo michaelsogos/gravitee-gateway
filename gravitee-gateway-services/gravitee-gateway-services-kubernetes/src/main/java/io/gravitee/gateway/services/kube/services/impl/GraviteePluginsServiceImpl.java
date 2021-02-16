@@ -206,6 +206,10 @@ public class GraviteePluginsServiceImpl
         return name + "." + context.getResourceName() + "." + context.getNamespace();
     }
 
+    private String buildResourceName(GraviteePlugin pluginCustomResource, String name) {
+        return name + "." + pluginCustomResource.getMetadata().getName() + "." + pluginCustomResource.getMetadata().getNamespace();
+    }
+
     protected WatchActionContext<GraviteePlugin> notifyListeners(WatchActionContext<GraviteePlugin> context) {
         GraviteePluginStatus status = context.getResource().getStatus();
         Map<String, String> newHashCodes = buildHashCodes(context);
@@ -215,33 +219,6 @@ public class GraviteePluginsServiceImpl
             }
         }
         return context;
-    }
-
-    @Override
-    public PluginRevision<Policy> buildAuthenticationPolicy(WatchActionContext context, PluginReference pluginRef) {
-        PluginRevision<Policy> result = new PluginRevision<>(null, pluginRef, 0, null);
-        try {
-            // if namespace isn't specified in the plugin reference, we use the same namespace as the context resource
-            final String namespace = getReferenceNamespace(context, pluginRef);
-            GraviteePlugin gioPlugin = this.crdClient.inNamespace(namespace).withName(pluginRef.getResource()).get();
-            Optional<Plugin> optPlugin = gioPlugin.getSpec().getPlugin(pluginRef.getName());
-            if (optPlugin.isPresent()) {
-                Plugin plugin = optPlugin.get();
-                if (plugin.definePolicy()) {
-                    final Policy policy = new Policy();
-                    policy.setName(plugin.getPolicy());
-                    policy.setConfiguration(
-                        OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, namespace, plugin.getConfiguration()))
-                    );
-                    result =
-                        new PluginRevision<>(policy, pluginRef, gioPlugin.getMetadata().getGeneration(), computePolicyHashCode(policy));
-                }
-            }
-        } catch (JsonProcessingException e) {
-            LOGGER.warn("Unable to process security configuration for pluginRef {}", pluginRef, e);
-        }
-
-        return result;
     }
 
     @Override
@@ -313,7 +290,7 @@ public class GraviteePluginsServiceImpl
                     plugin = optPlugin.get();
                     if (plugin.defineResource()) {
                         Resource resource = new Resource();
-                        resource.setName(buildResourceName(context, pluginRef.getName()));
+                        resource.setName(buildResourceName(gioPlugin, pluginRef.getName()));
                         resource.setType(plugin.getResource());
                         resource.setConfiguration(
                             OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))

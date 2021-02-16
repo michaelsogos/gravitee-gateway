@@ -32,6 +32,7 @@ import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 import io.gravitee.gateway.services.kube.managers.GraviteeGatewayManager;
 import io.gravitee.gateway.services.kube.managers.GraviteePluginsManager;
 import io.gravitee.gateway.services.kube.managers.GraviteeServicesManager;
+import io.gravitee.gateway.services.kube.utils.Fabric8sMapperUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,8 +63,7 @@ public class KubeSyncService extends AbstractService {
 
     @Override
     protected void doStart() throws Exception {
-        SimpleModule module = initializeJsonModule();
-        Serialization.jsonMapper().registerModule(module);
+        Fabric8sMapperUtils.initJsonMapper();
 
         if (pluginsManager != null) {
             pluginsManager.start();
@@ -76,54 +76,6 @@ public class KubeSyncService extends AbstractService {
         }
     }
 
-    private SimpleModule initializeJsonModule() {
-        SimpleModule module = new SimpleModule();
-
-        // useful to send data to gateway
-        module.addSerializer(
-            Enum.class,
-            new StdSerializer<Enum>(Enum.class) {
-                @Override
-                public void serialize(Enum value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
-                    jgen.writeString(value.name().toLowerCase());
-                }
-            }
-        );
-
-        module.addSerializer(
-            GraviteeGatewayStatus.GatewayState.class,
-            new StdSerializer<GraviteeGatewayStatus.GatewayState>(GraviteeGatewayStatus.GatewayState.class) {
-                @Override
-                public void serialize(GraviteeGatewayStatus.GatewayState value, JsonGenerator jgen, SerializerProvider provider)
-                    throws IOException {
-                    jgen.writeString(value.name());
-                }
-            }
-        );
-
-        module.addSerializer(
-            GraviteePluginStatus.PluginState.class,
-            new StdSerializer<GraviteePluginStatus.PluginState>(GraviteePluginStatus.PluginState.class) {
-                @Override
-                public void serialize(GraviteePluginStatus.PluginState value, JsonGenerator jgen, SerializerProvider provider)
-                    throws IOException {
-                    jgen.writeString(value.name());
-                }
-            }
-        );
-
-        module.addDeserializer(
-            LoadBalancerType.class,
-            new StdDeserializer<LoadBalancerType>(LoadBalancerType.class) {
-                @Override
-                public LoadBalancerType deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-                    throws IOException, JsonProcessingException {
-                    return LoadBalancerType.valueOf(jsonParser.getValueAsString().replaceAll("-", "_").toUpperCase());
-                }
-            }
-        );
-        return module;
-    }
 
     @Override
     protected void doStop() throws Exception {

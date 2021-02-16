@@ -146,7 +146,7 @@ public class IngressControllerService extends AbstractService {
         if (ingressMeta.getAnnotations().containsKey("gravitee.io/security-type")) {
             String securityType = ingressMeta.getAnnotations().get("gravitee.io/security-type");
             if ("key_less".equalsIgnoreCase(securityType)) {
-                api.setSecurity("key_less");
+                api.setAuthentication("key_less");
             } else {
                 String conf = ingressMeta.getAnnotations().get("gravitee.io/security-config");
                 LOGGER.info("###" + securityType + " " + conf);
@@ -156,11 +156,11 @@ public class IngressControllerService extends AbstractService {
 
                 if (plugin.isPresent()) {
                     if ("jwt".equalsIgnoreCase(securityType)) {
-                        api.setSecurity("JWT");
+                        api.setAuthentication("JWT");
                         try {
                             final String securityDefinition = new ObjectMapper().writeValueAsString(plugin.get().getConfiguration());
                             LOGGER.info("JWT Config: " + securityDefinition);
-                            api.setSecurityDefinition(securityDefinition);
+                            api.setAuthenticationDefinition(securityDefinition);
                         } catch (JsonProcessingException e) {
                             e.printStackTrace();
                         }

@@ -73,7 +73,7 @@ public class FreePlanAuthenticationHandler implements AuthenticationHandler {
 
                                 @Override
                                 public String configuration() {
-                                    return api.getSecurityDefinition();
+                                    return api.getAuthenticationDefinition();
                                 }
                             };
                         }

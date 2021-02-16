@@ -17,6 +17,7 @@ package io.gravitee.gateway.services.kube.services;
 
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.DoneableGraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayList;
@@ -44,4 +45,6 @@ public interface GraviteeGatewayService {
     MixedOperation<GraviteeGateway, GraviteeGatewayList, DoneableGraviteeGateway, Resource<GraviteeGateway, DoneableGraviteeGateway>> getCrdClient();
 
     GraviteeGateway lookup(WatchActionContext context, GraviteeGatewayReference ref);
+
+    List<PluginRevision<io.gravitee.definition.model.plugins.resources.Resource>> extractResources(WatchActionContext<GraviteeGateway> context);
 }

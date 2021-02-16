@@ -16,6 +16,7 @@
 package io.gravitee.gateway.services.kube.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.yaml.snakeyaml.Yaml;
 
@@ -28,8 +29,16 @@ import java.util.Map;
  */
 public class ObjectMapperHelper {
 
-    private static ObjectMapper jsonMapper = new ObjectMapper();
-    private static ObjectMapper yaml = new ObjectMapper(new YAMLFactory());
+    private static ObjectMapper jsonMapper;
+    private static ObjectMapper yaml;
+
+    static {
+        SimpleModule simpleModule = Fabric8sMapperUtils.initializeJsonModule();
+        jsonMapper = new ObjectMapper();
+        yaml = new ObjectMapper(new YAMLFactory());
+        jsonMapper.registerModule(simpleModule);
+        yaml.registerModule(simpleModule);
+    }
 
     public static <T> T readYamlAs(String file, Class<T> type) {
         try {

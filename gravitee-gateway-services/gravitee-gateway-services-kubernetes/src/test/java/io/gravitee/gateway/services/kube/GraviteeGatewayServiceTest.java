@@ -15,31 +15,20 @@
  */
 package io.gravitee.gateway.services.kube;
 
-import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.client.server.mock.KubernetesServer;
 import io.gravitee.definition.model.Policy;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
-import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
-import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
-import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
-import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
 import io.gravitee.gateway.services.kube.utils.ObjectMapperHelper;
 import io.reactivex.subscribers.TestSubscriber;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
@@ -49,13 +38,7 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = KubeSyncTestConfig.class)
-public class GraviteeGatewayServiceTest {
-
-    @Autowired
-    public KubernetesServer kubernetesServer;
-
-    @Autowired
-    protected ApplicationContext applicationContext;
+public class GraviteeGatewayServiceTest extends AbstractServiceTest {
 
     @Autowired
     protected GraviteeGatewayService cut;
@@ -91,7 +74,6 @@ public class GraviteeGatewayServiceTest {
 
         verify(listener, never()).onGatewayUpdate(any()); // notify other components is useless for new resources
     }
-
 
     @Test
     public void shouldValidatePluginDefinition_withResolveSecret() {
@@ -141,34 +123,5 @@ public class GraviteeGatewayServiceTest {
 
         verify(listener, never()).onGatewayUpdate(any());
     }
-
-
-    private void populateSecret(String ns, String name, String filename) {
-        Secret toCreate = kubernetesServer.getClient().secrets().load(getClass().getResourceAsStream(filename)).get();
-        kubernetesServer.expect().get().withPath("/api/v1/namespaces/" + ns + "/secrets/" + name).andReturn(200, toCreate).once();
-    }
-
-    private void populatePluginResource(String ns, String name, String filename, boolean mockStatusUpdate) {
-        GraviteePlugin resource = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name).andReturn(200, resource).always();
-        if (mockStatusUpdate) {
-            GraviteePlugin resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
-            GraviteePluginStatus status = new GraviteePluginStatus();
-            resourceWithStatus.setStatus(status);
-            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name +"/status").andReturn(200, resourceWithStatus).always();
-        }
-    }
-
-    private void populateGatewayResource(String ns, String name, String filename, boolean mockStatusUpdate) {
-        GraviteeGateway resource = ObjectMapperHelper.readYamlAs(filename, GraviteeGateway.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-gateways/" + name).andReturn(200, resource).always();
-        if (mockStatusUpdate) {
-            GraviteeGateway resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteeGateway.class);
-            GraviteeGatewayStatus status = new GraviteeGatewayStatus();
-            resourceWithStatus.setStatus(status);
-            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-gateways/" + name +"/status").andReturn(200, resourceWithStatus).always();
-        }
-    }
-
 
 }
