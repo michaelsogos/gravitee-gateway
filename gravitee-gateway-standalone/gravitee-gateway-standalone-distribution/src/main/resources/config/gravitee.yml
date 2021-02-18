@@ -62,6 +62,7 @@ management:
     dbname: ${ds.mongodb.dbname}
     host: ${ds.mongodb.host}
     port: ${ds.mongodb.port}
+#    prefix: gio_
 #    username:
 #    password:
 #    connectionsPerHost: 0
