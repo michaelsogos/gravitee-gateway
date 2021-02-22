@@ -55,10 +55,17 @@ public class GraviteeGatewayServiceTest extends AbstractServiceTest {
     public void shouldValidatePluginReference_withResolveSecret() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateGatewayResource("default", "internal-gw-ref", "/kubernetes/gateways/test-gravitee-gateway-reference.yml", true);
-        populatePluginResource("default", "mygateway-plugins", "/kubernetes/plugins/test-gravitee-plugins-for-gateway.yml", true);
 
         GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-reference.yml", GraviteeGateway.class);
         TestSubscriber<WatchActionContext<GraviteeGateway>> observable = cut.processAction(new WatchActionContext<>(gateway, WatchActionContext.Event.ADDED)).test();
+        observable.awaitTerminalEvent();
+        observable.assertError(error -> error instanceof PipelineException && error.getMessage().contains("Reference 'gateway-plugins-dep' undefined"));
+
+        // Depoy CustomResource Plugin
+        populatePluginResource("default", "gateway-plugins-dep", "/kubernetes/gateways/dependencies/dep-gravitee-plugins.yml", true);
+
+        gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-reference.yml", GraviteeGateway.class);
+        observable = cut.processAction(new WatchActionContext<>(gateway, WatchActionContext.Event.ADDED)).test();
         observable.awaitTerminalEvent();
         observable.assertNoErrors();
         observable.assertValue(ctx -> {
@@ -79,7 +86,7 @@ public class GraviteeGatewayServiceTest extends AbstractServiceTest {
     public void shouldValidatePluginDefinition_withResolveSecret() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateGatewayResource("default", "internal-gw-def", "/kubernetes/gateways/test-gravitee-gateway-definition.yml", true);
-        populatePluginResource("default", "mygateway-plugins", "/kubernetes/plugins/test-gravitee-plugins-for-gateway.yml", true);
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
 
         GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
         TestSubscriber<WatchActionContext<GraviteeGateway>> observable = cut.processAction(new WatchActionContext<>(gateway, WatchActionContext.Event.ADDED)).test();
@@ -113,10 +120,10 @@ public class GraviteeGatewayServiceTest extends AbstractServiceTest {
     @Test
     public void shouldFail_ValidatePluginRef_UnknownSecret() {
         // do not populate the secret
-        populateGatewayResource("default", "internal-gw-ref", "/kubernetes/gateways/test-gravitee-gateway-reference.yml", true);
-        populatePluginResource("default", "mygateway-plugins", "/kubernetes/plugins/test-gravitee-plugins-for-gateway.yml", true);
+        populateGatewayResource("default", "internal-gw-ref-nosecret", "/kubernetes/gateways/test-gravitee-gateway-reference-nosecret.yml", true);
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
 
-        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-reference.yml", GraviteeGateway.class);
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-reference-nosecret.yml", GraviteeGateway.class);
         TestSubscriber<WatchActionContext<GraviteeGateway>> observable = cut.processAction(new WatchActionContext<>(gateway, WatchActionContext.Event.ADDED)).test();
         observable.awaitTerminalEvent();
         observable.assertError(error -> error instanceof PipelineException && error.getMessage().startsWith("Unable to read key 'myapp-password'"));

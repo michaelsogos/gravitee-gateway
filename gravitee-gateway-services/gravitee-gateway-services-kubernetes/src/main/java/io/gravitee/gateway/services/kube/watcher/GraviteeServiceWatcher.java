@@ -24,6 +24,7 @@ import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
+import io.gravitee.gateway.services.kube.services.impl.ServiceWatchActionContext;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext.Event;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
@@ -69,13 +70,13 @@ public class GraviteeServiceWatcher implements Watcher<GraviteeServices>, Gravit
         LOGGER.debug("Receive '{}' for '{}'", action, gioServices);
         switch (action) {
             case ADDED:
-                subscriber.onNext(new WatchActionContext(gioServices, Event.ADDED));
+                subscriber.onNext(new ServiceWatchActionContext(gioServices, Event.ADDED));
                 break;
             case MODIFIED:
-                subscriber.onNext(new WatchActionContext(gioServices, Event.MODIFIED));
+                subscriber.onNext(new ServiceWatchActionContext(gioServices, Event.MODIFIED));
                 break;
             case DELETED:
-                subscriber.onNext(new WatchActionContext(gioServices, Event.DELETED));
+                subscriber.onNext(new ServiceWatchActionContext(gioServices, Event.DELETED));
                 break;
             case ERROR:
                 LOGGER.warn("Action {} received for GraviteeServices", action);

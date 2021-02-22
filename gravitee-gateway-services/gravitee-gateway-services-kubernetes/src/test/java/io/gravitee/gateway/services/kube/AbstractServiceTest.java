@@ -29,6 +29,8 @@ import org.junit.Before;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 
+import java.util.HashMap;
+
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
@@ -47,8 +49,12 @@ public class AbstractServiceTest {
     }
 
     protected void populateSecret(String ns, String name, String filename) {
+        populateSecret(ns, name, filename, 1);
+    }
+
+    protected void populateSecret(String ns, String name, String filename, int times) {
         Secret toCreate = kubernetesServer.getClient().secrets().load(getClass().getResourceAsStream(filename)).get();
-        kubernetesServer.expect().get().withPath("/api/v1/namespaces/" + ns + "/secrets/" + name).andReturn(200, toCreate).once();
+        kubernetesServer.expect().get().withPath("/api/v1/namespaces/" + ns + "/secrets/" + name).andReturn(200, toCreate).times(times);
     }
 
     protected void populatePluginResource(String ns, String name, String filename, boolean mockStatusUpdate) {

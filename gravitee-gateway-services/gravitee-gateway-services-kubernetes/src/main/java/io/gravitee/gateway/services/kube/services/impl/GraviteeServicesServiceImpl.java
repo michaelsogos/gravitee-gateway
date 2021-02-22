@@ -18,8 +18,8 @@ package io.gravitee.gateway.services.kube.services.impl;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
-import io.gravitee.definition.model.*;
 import io.gravitee.definition.model.VirtualHost;
+import io.gravitee.definition.model.*;
 import io.gravitee.definition.model.endpoint.HttpEndpoint;
 import io.gravitee.definition.model.plugins.resources.Resource;
 import io.gravitee.gateway.handlers.api.definition.Api;
@@ -99,43 +99,30 @@ public class GraviteeServicesServiceImpl
         Flowable pipeline = null;
         switch (context.getEvent()) {
             case ADDED:
-                pipeline =
-                    toFlowable(split(context))
+                pipeline = Flowable.just((ServiceWatchActionContext)context)
                         .map(this::lookupGatewayRef)
-                        .map(this::prepareApi)
-                        .map(this::buildApiPaths)
-                        .map(this::buildApiProxy)
-                        .map(this::buildApiResources)
-                        .map(this::applyAuthenticationPlugin)
+                        .flatMap(this::computeApiDefinition)
                         .map(this::addService)
                         .map(this::preserveApiData);
                 break;
             case MODIFIED:
-                pipeline =
-                    toFlowable(split(context))
+                pipeline = Flowable.just((ServiceWatchActionContext)context)
                         .map(this::lookupGatewayRef)
-                        .map(this::prepareApi)
-                        .map(this::buildApiPaths)
-                        .map(this::buildApiProxy)
-                        .map(this::buildApiResources)
-                        .map(this::applyAuthenticationPlugin)
+                        .flatMap(this::computeApiDefinition)
                         .map(this::updateService)
                         .map(this::preserveApiData);
                 break;
             case REFERENCE_UPDATED:
-                pipeline =
-                    toFlowable(split(context))
+                pipeline = Flowable.just((ServiceWatchActionContext)context)
                         .map(this::lookupGatewayRef)
-                        .map(this::prepareApi)
-                        .map(this::buildApiPaths)
-                        .map(this::buildApiProxy)
-                        .map(this::buildApiResources)
-                        .map(this::applyAuthenticationPlugin)
+                        .flatMap(this::computeApiDefinition)
                         .map(this::updateService)
                         .map(this::preserveApiData);
                 break;
             case DELETED:
-                pipeline = toFlowable(split(context)).map(this::prepareApi).map(this::deleteService).map(this::cleanApiData);
+                pipeline = prepareApiDefinition((ServiceWatchActionContext)context)
+                        .map(this::deleteService)
+                        .map(this::cleanApiData);
                 break;
             default:
                 pipeline = Flowable.just(context);
@@ -143,7 +130,23 @@ public class GraviteeServicesServiceImpl
         return pipeline;
     }
 
-    private Stream<ServiceWatchActionContext> split(WatchActionContext<GraviteeServices> action) {
+    private Flowable<ServiceWatchActionContext> computeApiDefinition(ServiceWatchActionContext context) {
+        return prepareApiDefinition(context)
+                .map(this::buildApiPaths)
+                .map(this::buildApiProxy)
+                .map(this::buildApiResources)
+                .map(this::applyAuthenticationPlugin).reduce(context, (acc, ctx) -> {
+                    acc.addApi(ctx.getApi());
+                    return acc;
+                }).toFlowable();
+    }
+
+    private Flowable<SingleServiceActionContext> prepareApiDefinition(ServiceWatchActionContext srvCtx) {
+        return toFlowable(split(srvCtx))
+                .map(this::prepareApi);
+    }
+
+    private Stream<SingleServiceActionContext> split(ServiceWatchActionContext action) {
         if (action.getResource() != null && action.getResource().getSpec().getServices() != null) {
             return action
                 .getResource()
@@ -151,13 +154,13 @@ public class GraviteeServicesServiceImpl
                 .getServices()
                 .entrySet()
                 .stream()
-                .map(entry -> new ServiceWatchActionContext(action, entry.getValue(), entry.getKey()));
+                .map(entry -> new SingleServiceActionContext(action, entry.getValue(), entry.getKey()));
         } else {
             return Stream.empty();
         }
     }
 
-    private Flowable<ServiceWatchActionContext> toFlowable(Stream<ServiceWatchActionContext> stream) {
+    private Flowable<SingleServiceActionContext> toFlowable(Stream<SingleServiceActionContext> stream) {
         return Flowable.generate(() -> stream.iterator(), (iterator, emitter) -> {
             if (iterator.hasNext()) {
                 emitter.onNext(iterator.next());
@@ -172,38 +175,43 @@ public class GraviteeServicesServiceImpl
         return context;
     }
 
-    public ServiceWatchActionContext cleanApiData(ServiceWatchActionContext context) {
+    public SingleServiceActionContext cleanApiData(SingleServiceActionContext context) {
         // TODO remove from cache
         return context;
     }
 
     public ServiceWatchActionContext addService(ServiceWatchActionContext context) {
-        if (context.getApi().isEnabled()) {
-            LOGGER.info("Deploy Api '{}'", context.getApi().getId());
-            apiManager.register(context.getApi());
-        } else {
-            LOGGER.debug("Ignore disabled Api '{}'", context.getApi().getId());
+        for (Api api : context.getApis()) {
+            if (api.isEnabled()) {
+                LOGGER.info("Deploy Api '{}'", api.getId());
+                apiManager.register(api);
+            } else {
+                LOGGER.debug("Ignore disabled Api '{}'", api.getId());
+            }
         }
         return context;
     }
 
     public ServiceWatchActionContext updateService(ServiceWatchActionContext context) {
-        boolean wasPresentAndEnabled = false;
-        if (!context.getApi().isEnabled()) {
-            if (wasPresentAndEnabled) {
-                LOGGER.info("Undeploy Api '{}'", context.getApi().getId());
-                // TODO apiManager.undeploy(api);
+        for (Api api : context.getApis()) {
+            boolean wasPresentAndEnabled = false; // TODO lookup from the Api cache
+            if (!api.isEnabled()) {
+                if (wasPresentAndEnabled) {
+                    LOGGER.info("Undeploy Api '{}'", api.getId());
+                    // TODO apiManager.undeploy(api);
+                } else {
+                    LOGGER.debug("Ignore disabled Api '{}'", api.getId());
+                }
             } else {
-                LOGGER.debug("Ignore disabled Api '{}'", context.getApi().getId());
+                LOGGER.info("Deploy Api '{}'", api.getId());
+                // TODO apiManager.deploy(api);
             }
-        } else {
-            LOGGER.info("Deploy Api '{}'", context.getApi().getId());
-            // TODO apiManager.deploy(api);
         }
+
         return context;
     }
 
-    public ServiceWatchActionContext deleteService(ServiceWatchActionContext context) {
+    public SingleServiceActionContext deleteService(SingleServiceActionContext context) {
         LOGGER.info("Undeploy api '{}'", context.getApi().getId());
         //TODO apiManager.undeploy(apiId);
         return context;
@@ -226,7 +234,7 @@ public class GraviteeServicesServiceImpl
         return context;
     }
 
-    private ServiceWatchActionContext prepareApi(ServiceWatchActionContext context) {
+    private SingleServiceActionContext prepareApi(SingleServiceActionContext context) {
         Api api = new Api();
         api.setName(context.getServiceName());
         api.setId(context.buildApiId());
@@ -236,7 +244,7 @@ public class GraviteeServicesServiceImpl
         return context;
     }
 
-    private ServiceWatchActionContext buildApiResources(ServiceWatchActionContext context) {
+    private SingleServiceActionContext buildApiResources(SingleServiceActionContext context) {
         GraviteeService service = context.getServiceResource();
         List<Resource> resources = context.getApi().getResources();
         if (resources == null) {
@@ -268,7 +276,7 @@ public class GraviteeServicesServiceImpl
         return context;
     }
 
-    private ServiceWatchActionContext buildApiPaths(ServiceWatchActionContext context) {
+    private SingleServiceActionContext buildApiPaths(SingleServiceActionContext context) {
         Api api = context.getApi();
 
         List<ServicePath> svcPaths = context.getServiceResource().getPaths();
@@ -322,7 +330,7 @@ public class GraviteeServicesServiceImpl
         return context;
     }
 
-    private ServiceWatchActionContext buildApiProxy(ServiceWatchActionContext context) {
+    private SingleServiceActionContext buildApiProxy(SingleServiceActionContext context) {
         Api api = context.getApi();
         Proxy proxy = new Proxy();
         proxy.setVirtualHosts(
@@ -355,7 +363,7 @@ public class GraviteeServicesServiceImpl
         return context;
     }
 
-    private Set<EndpointGroup> buildEndpoints(ServiceWatchActionContext context) {
+    private Set<EndpointGroup> buildEndpoints(SingleServiceActionContext context) {
         Map<String, ServiceEndpoint> endpoints = context.getServiceResource().getEndpoints();
         return endpoints
             .entrySet()
@@ -434,7 +442,7 @@ public class GraviteeServicesServiceImpl
             .collect(Collectors.toSet());
     }
 
-    private ServiceWatchActionContext applyAuthenticationPlugin(ServiceWatchActionContext context) {
+    private SingleServiceActionContext applyAuthenticationPlugin(SingleServiceActionContext context) {
         Api api = context.getApi();
         if (context.getServiceResource().getAuthentication() != null) {
             PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, context.getServiceResource().getAuthentication(), null);

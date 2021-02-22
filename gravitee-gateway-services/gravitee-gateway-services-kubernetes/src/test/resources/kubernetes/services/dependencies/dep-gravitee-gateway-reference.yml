@@ -16,16 +16,16 @@
 apiVersion: "gravitee.io/v1alpha1"
 kind: GraviteeGateway
 metadata:
-  name: internal-gw-ref
+  name: dep-gateway
   namespace: default
   generation: 1
 spec:
   authenticationReference:
-    resource: "gateway-plugins-dep"
+    resource: "dep-plugins-ref"
     name: "jwt-poc"
   resourceReferences:
     - namespace: "default"
-      resource: "gateway-plugins-dep"
+      resource: "dep-plugins-ref"
       name: "oauth2-resource"
   defaultBackendConfigurations:
     httpClient:

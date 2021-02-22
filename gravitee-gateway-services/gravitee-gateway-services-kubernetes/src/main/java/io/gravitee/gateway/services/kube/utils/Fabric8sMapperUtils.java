@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import io.gravitee.definition.model.LoadBalancerType;
+import io.gravitee.definition.model.ProtocolVersion;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 
@@ -79,6 +80,17 @@ public class Fabric8sMapperUtils {
                     public LoadBalancerType deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
                             throws IOException, JsonProcessingException {
                         return LoadBalancerType.valueOf(jsonParser.getValueAsString().replaceAll("-", "_").toUpperCase());
+                    }
+                }
+        );
+
+        module.addDeserializer(
+                ProtocolVersion.class,
+                new StdDeserializer<ProtocolVersion>(ProtocolVersion.class) {
+                    @Override
+                    public ProtocolVersion deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                            throws IOException, JsonProcessingException {
+                        return ProtocolVersion.valueOf(jsonParser.getValueAsString().toUpperCase());
                     }
                 }
         );

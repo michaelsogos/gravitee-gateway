@@ -18,8 +18,10 @@ package io.gravitee.gateway.services.kube.services.impl;
 import io.gravitee.definition.model.HttpClientSslOptions;
 import io.gravitee.definition.model.HttpProxy;
 import io.gravitee.gateway.handlers.api.definition.Api;
+import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
+import io.gravitee.gateway.services.kube.crds.resources.service.GraviteeService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +30,13 @@ import java.util.List;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class ServiceWatchActionContext extends WatchActionContext<GraviteeServices> {
+public class SingleServiceActionContext extends WatchActionContext<GraviteeServices> {
+
+    private final GraviteeService serviceResource;
+    private final String serviceName;
+
+    private Api api; // TODO use the right reactable type
+
     /**
      * Gateway referenced by the service CustomResource
      */
@@ -42,10 +50,39 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
      */
     private HttpProxy gatewayProxyConf;
 
-    private List<Api> apis = new ArrayList<>();
+    /**
+     * use to retrieve easily if the API must be redeploy in case of plugin resource updates
+     */
+    private List<PluginRevision> pluginRevisions = new ArrayList<>();
 
-    public ServiceWatchActionContext(GraviteeServices resource, Event event) {
-        super(resource, event);
+    public SingleServiceActionContext(ServiceWatchActionContext origin, GraviteeService serviceResource, String name) {
+        super(origin.getResource(), origin.getEvent());
+        this.serviceResource = serviceResource;
+        this.serviceName = name;
+
+        this.gateway = origin.getGateway();
+        this.gatewayProxyConf = origin.getGatewayProxyConf();
+        this.gatewaySslOptions = origin.getGatewaySslOptions();
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public GraviteeService getServiceResource() {
+        return serviceResource;
+    }
+
+    public Api getApi() {
+        return api;
+    }
+
+    public void setApi(Api api) {
+        this.api = api;
+    }
+
+    public void addPluginRevision(PluginRevision revision) {
+        this.pluginRevisions.add(revision);
     }
 
     public GraviteeGateway getGateway() {
@@ -72,11 +109,8 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
         this.gatewayProxyConf = gatewayProxyConf;
     }
 
-    public void addApi(Api api) {
-        this.apis.add(api);
-    }
-
-    public List<Api> getApis() {
-        return apis;
+    // -- utils methods to regroup in GSUtils class ?
+    public String buildApiId() {
+        return serviceName + "." + getResource().getMetadata().getName() + "." + getResource().getMetadata().getNamespace();
     }
 }

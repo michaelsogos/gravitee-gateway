@@ -239,7 +239,8 @@ public class GraviteePluginsServiceImpl
             if (pluginRef != null && !result.isValid()) {
                 // if namespace isn't specified in the plugin reference, we use the same namespace as the context resource
                 final String namespace = getReferenceNamespace(context, pluginRef);
-                GraviteePlugin gioPlugin = this.crdClient.inNamespace(namespace).withName(pluginRef.getResource()).get();
+                GraviteePlugin gioPlugin = loadPluginDefinition(context, pluginRef, namespace);
+
                 Optional<Plugin> optPlugin = gioPlugin.getSpec().getPlugin(pluginRef.getName());
 
                 result = new PluginRevision<>(null, pluginRef, gioPlugin.getMetadata().getGeneration(), null);
@@ -282,7 +283,8 @@ public class GraviteePluginsServiceImpl
             if (pluginRef != null && !result.isValid()) {
                 // if namespace isn't specified in the plugin reference, we use the same namespace as the context resource
                 final String namespace = getReferenceNamespace(context, pluginRef);
-                GraviteePlugin gioPlugin = this.crdClient.inNamespace(namespace).withName(pluginRef.getResource()).get();
+                GraviteePlugin gioPlugin = loadPluginDefinition(context, pluginRef, namespace);
+
                 Optional<Plugin> optPlugin = gioPlugin.getSpec().getPlugin(pluginRef.getName());
 
                 result = new PluginRevision<>(null, pluginRef, gioPlugin.getMetadata().getGeneration(), null);
@@ -305,6 +307,14 @@ public class GraviteePluginsServiceImpl
         }
 
         return result;
+    }
+
+    protected GraviteePlugin loadPluginDefinition(WatchActionContext context, PluginReference pluginRef, String namespace) {
+        GraviteePlugin gioPlugin = this.crdClient.inNamespace(namespace).withName(pluginRef.getResource()).get();
+        if (gioPlugin == null) {
+            throw new PipelineException(context, "Reference '" + pluginRef.getResource() + "' undefined in namespace '" + namespace + "'");
+        }
+        return gioPlugin;
     }
 
 }

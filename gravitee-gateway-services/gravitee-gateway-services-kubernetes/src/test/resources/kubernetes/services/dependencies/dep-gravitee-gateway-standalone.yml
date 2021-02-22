@@ -13,20 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 apiVersion: "gravitee.io/v1alpha1"
 kind: GraviteeGateway
 metadata:
-  name: internal-gw-ref
+  name: dep-gateway
   namespace: default
   generation: 1
 spec:
-  authenticationReference:
-    resource: "gateway-plugins-dep"
-    name: "jwt-poc"
-  resourceReferences:
-    - namespace: "default"
-      resource: "gateway-plugins-dep"
-      name: "oauth2-resource"
+  authentication:
+    policy: jwt
+    configuration:
+      signature: "HMAC_HS256"
+      publicKeyResolver: "GIVEN_KEY"
+      useSystemProxy: false
+      extractClaims: false
+      propagateAuthHeader: true
+      resolverParameter:
+        valueFrom:
+          secretKeyRef:
+            name: myapp
+            key: myapp-password
+  resources:
+    my-oauth2-res:
+      resource: oauth2
+      configuration:
+        authorizationServerUrl: e
+        introspectionEndpoint: e
+        clientId: e
+        clientSecret: e
   defaultBackendConfigurations:
     httpClient:
       connectTimeout: 5000

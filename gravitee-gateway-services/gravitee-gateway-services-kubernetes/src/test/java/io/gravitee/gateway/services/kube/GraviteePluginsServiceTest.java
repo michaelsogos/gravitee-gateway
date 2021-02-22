@@ -80,7 +80,7 @@ public class GraviteePluginsServiceTest extends AbstractServiceTest {
 
     @Test
     public void shouldNotNotifyListenerTwice() {
-        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml", 2);
         populatePluginResource("default", "myapp-plugins", "/kubernetes/plugins/test-gravitee-plugin-success.yml", true);
 
         final GraviteePluginStatus.IntegrationState integration = new GraviteePluginStatus.IntegrationState();

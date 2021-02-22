@@ -27,6 +27,7 @@ import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
@@ -95,7 +96,11 @@ public class GraviteeGatewayServiceImpl
     @Override
     public GraviteeGateway lookup(WatchActionContext context, GraviteeGatewayReference ref) {
         final String namespace = getReferenceNamespace(context.getNamespace(), ref);
-        return this.crdClient.inNamespace(namespace).withName(ref.getName()).get();
+        GraviteeGateway gw = this.crdClient.inNamespace(namespace).withName(ref.getName()).get();
+        if (gw == null) {
+            throw new PipelineException(context, "Gateway Reference '" + ref.getName() + "' undefined in namespace '" + namespace + "'");
+        }
+        return gw;
     }
 
     @Override
