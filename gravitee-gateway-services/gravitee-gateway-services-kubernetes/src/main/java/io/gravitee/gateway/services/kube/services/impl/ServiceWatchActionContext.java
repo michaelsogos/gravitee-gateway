@@ -18,11 +18,15 @@ package io.gravitee.gateway.services.kube.services.impl;
 import io.gravitee.definition.model.HttpClientSslOptions;
 import io.gravitee.definition.model.HttpProxy;
 import io.gravitee.gateway.handlers.api.definition.Api;
+import io.gravitee.gateway.services.kube.crds.cache.GraviteeServicesCacheEntry;
+import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -43,6 +47,8 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
     private HttpProxy gatewayProxyConf;
 
     private List<Api> apis = new ArrayList<>();
+
+    private GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
 
     public ServiceWatchActionContext(GraviteeServices resource, Event event) {
         super(resource, event);
@@ -78,5 +84,13 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
 
     public List<Api> getApis() {
         return apis;
+    }
+
+    public GraviteeServicesCacheEntry getCacheEntry() {
+        return cacheEntry;
+    }
+
+    public void setCacheEntry(GraviteeServicesCacheEntry cacheEntry) {
+        this.cacheEntry = cacheEntry;
     }
 }

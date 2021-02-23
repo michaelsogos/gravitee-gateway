@@ -21,6 +21,7 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import io.gravitee.definition.model.HttpClientOptions;
 import io.gravitee.definition.model.Policy;
 import io.gravitee.definition.model.plugins.resources.Resource;
+import io.gravitee.gateway.handlers.api.definition.Api;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,6 +37,14 @@ public class ControllerDigestHelper {
     public static String computePolicyHashCode(Policy policy) {
         String canonicalString = policy.getName() + ":" + policy.getConfiguration();
         return computeDigest(canonicalString);
+    }
+
+    public static String computeApiHashCode(Api api) {
+        try {
+            return computeDigest(Serialization.jsonMapper().writeValueAsString(api));
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Unable to process api definition", e);
+        }
     }
 
     private static String computeDigest(String canonicalString) {

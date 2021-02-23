@@ -54,6 +54,7 @@ public class SingleServiceActionContext extends WatchActionContext<GraviteeServi
      * use to retrieve easily if the API must be redeploy in case of plugin resource updates
      */
     private List<PluginRevision> pluginRevisions = new ArrayList<>();
+    private boolean useGatewayAuthentication = false;
 
     public SingleServiceActionContext(ServiceWatchActionContext origin, GraviteeService serviceResource, String name) {
         super(origin.getResource(), origin.getEvent());
@@ -107,6 +108,14 @@ public class SingleServiceActionContext extends WatchActionContext<GraviteeServi
 
     public void setGatewayProxyConf(HttpProxy gatewayProxyConf) {
         this.gatewayProxyConf = gatewayProxyConf;
+    }
+
+    public boolean isUseGatewayAuthentication() {
+        return useGatewayAuthentication;
+    }
+
+    public void setUseGatewayAuthentication(boolean useGatewayAuthentication) {
+        this.useGatewayAuthentication = useGatewayAuthentication;
     }
 
     // -- utils methods to regroup in GSUtils class ?

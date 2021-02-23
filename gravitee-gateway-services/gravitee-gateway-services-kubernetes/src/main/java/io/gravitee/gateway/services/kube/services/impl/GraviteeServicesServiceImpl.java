@@ -24,6 +24,7 @@ import io.gravitee.definition.model.endpoint.HttpEndpoint;
 import io.gravitee.definition.model.plugins.resources.Resource;
 import io.gravitee.gateway.handlers.api.definition.Api;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
+import io.gravitee.gateway.services.kube.crds.cache.GraviteeServicesCacheEntry;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
@@ -46,6 +47,8 @@ import java.util.stream.Stream;
 
 import static io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration.buildHttpClientSslOptions;
 import static io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration.buildHttpProxy;
+import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.computeApiHashCode;
+import static io.gravitee.gateway.services.kube.utils.K8SResourceUtils.getFullName;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -66,6 +69,8 @@ public class GraviteeServicesServiceImpl
 
     @Autowired
     private ApiManager apiManager;
+
+    private Map<String, GraviteeServicesCacheEntry> serviceCache = new HashMap<>();
 
     private void initializeGraviteeServicesClient(KubernetesClient client) {
         LOGGER.debug("Creating CRD Client for 'gravitee-services'");
@@ -130,7 +135,18 @@ public class GraviteeServicesServiceImpl
                 .map(this::buildApiPaths)
                 .map(this::buildApiProxy)
                 .map(this::buildApiResources).reduce(context, (acc, ctx) -> {
-                    acc.addApi(ctx.getApi());
+                    Api api = ctx.getApi();
+
+                    // update Api/Service CacheEntry
+                    GraviteeServicesCacheEntry cacheEntry = acc.getCacheEntry();
+                    cacheEntry.setPlugins(api.getId(), ctx.getPluginRevisions());
+                    if (ctx.isUseGatewayAuthentication()){
+                        cacheEntry.setServiceWithGatewayAuth(api.getId());
+                    }
+                    cacheEntry.setServiceEnabled(api.getId(), api.isEnabled());
+                    cacheEntry.setHash(api.getId(), computeApiHashCode(api));
+
+                    acc.addApi(api);
                     return acc;
                 }).toFlowable();
     }
@@ -165,12 +181,12 @@ public class GraviteeServicesServiceImpl
     }
 
     public ServiceWatchActionContext preserveApiData(ServiceWatchActionContext context) {
-        // TODO add to cache
+        this.serviceCache.put(context.getResourceFullName(), context.getCacheEntry());
         return context;
     }
 
     public SingleServiceActionContext cleanApiData(SingleServiceActionContext context) {
-        // TODO remove from cache
+        this.serviceCache.remove(context.getResourceFullName());
         return context;
     }
 
@@ -188,17 +204,23 @@ public class GraviteeServicesServiceImpl
 
     public ServiceWatchActionContext updateService(ServiceWatchActionContext context) {
         for (Api api : context.getApis()) {
-            boolean wasPresentAndEnabled = false; // TODO lookup from the Api cache
+            GraviteeServicesCacheEntry entry = this.serviceCache.get(context.getResourceFullName());
             if (!api.isEnabled()) {
+                boolean wasPresentAndEnabled = (entry != null && entry.isEnable(api.getId()));
                 if (wasPresentAndEnabled) {
                     LOGGER.info("Undeploy Api '{}'", api.getId());
-                    // TODO apiManager.undeploy(api);
+                    apiManager.unregister(api.getId());
                 } else {
                     LOGGER.debug("Ignore disabled Api '{}'", api.getId());
                 }
             } else {
-                LOGGER.info("Deploy Api '{}'", api.getId());
-                // TODO apiManager.deploy(api);
+                boolean needRedeploy = entry != null && !Objects.equals(entry.getHash(api.getId()), context.getCacheEntry().getHash(api.getId()));
+                if (needRedeploy) {
+                    LOGGER.info("Deploy Api '{}'", api.getId());
+                    apiManager.register(api);
+                } else {
+                    LOGGER.debug("Api '{}' doesn't change", api.getId());
+                }
             }
         }
 
@@ -207,7 +229,7 @@ public class GraviteeServicesServiceImpl
 
     public SingleServiceActionContext deleteService(SingleServiceActionContext context) {
         LOGGER.info("Undeploy api '{}'", context.getApi().getId());
-        //TODO apiManager.undeploy(apiId);
+        apiManager.unregister(context.getApi().getId());
         return context;
     }
 
@@ -216,6 +238,8 @@ public class GraviteeServicesServiceImpl
         if (gatewayReference != null) {
             GraviteeGateway gw = gatewayService.lookup(context, gatewayReference);
             context.setGateway(gw);
+
+            context.getCacheEntry().setGateway(getFullName(gw.getMetadata()));
 
             BackendConfiguration backendConfiguration = gw.getSpec().getDefaultBackendConfigurations();
             if (backendConfiguration != null) {
@@ -249,6 +273,7 @@ public class GraviteeServicesServiceImpl
             for (PluginReference pluginRef : service.getResourceReferences()) {
                 PluginRevision<Resource> resource = pluginsService.buildResource(context, null, pluginRef);
                 resources.add(resource.getPlugin());
+                context.addPluginRevision(resource);
             }
         }
 
@@ -261,8 +286,10 @@ public class GraviteeServicesServiceImpl
         }
 
         if (context.getGateway() != null) {
-            for (PluginRevision<Resource> rev : gatewayService.extractResources(new WatchActionContext<>(context.getGateway(), WatchActionContext.Event.NONE))) {
+            WatchActionContext<GraviteeGateway> gwContext = new WatchActionContext<>(context.getGateway(), WatchActionContext.Event.NONE);
+            for (PluginRevision<Resource> rev : gatewayService.extractResources(gwContext)) {
                 resources.add(rev.getPlugin());
+                gwContext.getPluginRevisions().forEach(context::addPluginRevision);
             }
         }
 
@@ -450,6 +477,8 @@ public class GraviteeServicesServiceImpl
             authenticationPolicy = pluginsService.buildPolicy(context, context.getServiceResource().getAuthentication(), null);
         } else if (context.getServiceResource().getAuthenticationReference() != null) {
             authenticationPolicy = pluginsService.buildPolicy(context, null, context.getServiceResource().getAuthenticationReference());
+            // keep reference to allow comparaison on Plugins/Gateway updates
+            context.addPluginRevision(authenticationPolicy);
         } else if (context.getGateway() != null) {
             GraviteeGateway gateway = context.getGateway();
             if (gateway.getSpec().getAuthentication() != null) {
@@ -457,6 +486,8 @@ public class GraviteeServicesServiceImpl
             } else if (gateway.getSpec().getAuthenticationReference() != null) {
                 authenticationPolicy = pluginsService.buildPolicy(context, null, gateway.getSpec().getAuthenticationReference());
             }
+            // if Service uses Gateway authentication definition preserve this information
+            context.setUseGatewayAuthentication(true);
         }
 
         if (authenticationPolicy == null || !authenticationPolicy.isValid()) {

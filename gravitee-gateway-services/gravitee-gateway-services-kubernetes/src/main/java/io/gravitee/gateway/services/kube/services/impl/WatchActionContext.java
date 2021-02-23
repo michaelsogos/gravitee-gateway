@@ -21,6 +21,8 @@ import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.gravitee.gateway.services.kube.utils.K8SResourceUtils.getFullName;
+
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
@@ -62,6 +64,10 @@ public class WatchActionContext<T extends CustomResource> {
 
     public String getResourceName() {
         return this.resource.getMetadata().getName();
+    }
+
+    public String getResourceFullName() {
+        return getFullName(this.resource.getMetadata());
     }
 
     public void addAllRevisions(List<PluginRevision<?>> pluginRevisions) {
