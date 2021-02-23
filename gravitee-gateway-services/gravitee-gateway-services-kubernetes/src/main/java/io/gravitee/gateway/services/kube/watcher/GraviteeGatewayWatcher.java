@@ -19,11 +19,11 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
+import io.gravitee.gateway.services.kube.publisher.GraviteeActionPublisher;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
-import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,18 +37,18 @@ public class GraviteeGatewayWatcher implements Watcher<GraviteeGateway>, Gravite
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraviteeGatewayWatcher.class);
 
-    private Subscriber<? super WatchActionContext> subscriber;
+    private GraviteeActionPublisher publisher;
 
     private GraviteePluginsService graviteePluginsService;
 
     private GraviteeGatewayService graviteeGatewayService;
 
     public GraviteeGatewayWatcher(
-        Subscriber<? super WatchActionContext> subscriber,
+            GraviteeActionPublisher publisher,
         GraviteePluginsService graviteePluginsService,
         GraviteeGatewayService graviteeGatewayService
     ) {
-        this.subscriber = subscriber;
+        this.publisher = publisher;
         this.graviteeGatewayService = graviteeGatewayService;
         this.graviteePluginsService = graviteePluginsService;
         this.graviteePluginsService.registerListener(this);
@@ -59,13 +59,13 @@ public class GraviteeGatewayWatcher implements Watcher<GraviteeGateway>, Gravite
         LOGGER.info("Action {} received for GraviteeGateway", action);
         switch (action) {
             case ADDED:
-                subscriber.onNext(new WatchActionContext(graviteeGateway, WatchActionContext.Event.ADDED));
+                publisher.emit(new WatchActionContext(graviteeGateway, WatchActionContext.Event.ADDED));
                 break;
             case MODIFIED:
-                subscriber.onNext(new WatchActionContext(graviteeGateway, WatchActionContext.Event.MODIFIED));
+                publisher.emit(new WatchActionContext(graviteeGateway, WatchActionContext.Event.MODIFIED));
                 break;
             case DELETED:
-                subscriber.onNext(new WatchActionContext(graviteeGateway, WatchActionContext.Event.DELETED));
+                publisher.emit(new WatchActionContext(graviteeGateway, WatchActionContext.Event.DELETED));
                 break;
             case ERROR:
                 LOGGER.warn("Action {} received for GraviteeGateway", action);
@@ -80,11 +80,6 @@ public class GraviteeGatewayWatcher implements Watcher<GraviteeGateway>, Gravite
         if (e != null) {
             LOGGER.debug("Exception received on close Gateway watcher", e);
         }
-
-        // complete the rx subscriber
-        if (this.subscriber != null) {
-            this.subscriber.onComplete();
-        }
     }
 
     @Override
@@ -97,7 +92,7 @@ public class GraviteeGatewayWatcher implements Watcher<GraviteeGateway>, Gravite
             );
             derivedContext.setHttpConfigHashCode(context.getHttpConfigHashCode());
             derivedContext.getPluginRevisions().addAll(context.getPluginRevisions());
-            subscriber.onNext(derivedContext);
+            publisher.emit(derivedContext);
         }
     }
 }

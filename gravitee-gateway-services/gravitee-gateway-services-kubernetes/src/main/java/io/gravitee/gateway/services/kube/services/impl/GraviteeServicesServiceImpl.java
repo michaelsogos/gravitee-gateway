@@ -106,12 +106,6 @@ public class GraviteeServicesServiceImpl
                         .map(this::preserveApiData);
                 break;
             case MODIFIED:
-                pipeline = Flowable.just((ServiceWatchActionContext)context)
-                        .map(this::lookupGatewayRef)
-                        .flatMap(this::computeApiDefinition)
-                        .map(this::updateService)
-                        .map(this::preserveApiData);
-                break;
             case REFERENCE_UPDATED:
                 pipeline = Flowable.just((ServiceWatchActionContext)context)
                         .map(this::lookupGatewayRef)
@@ -218,7 +212,6 @@ public class GraviteeServicesServiceImpl
     }
 
     public ServiceWatchActionContext lookupGatewayRef(ServiceWatchActionContext context) {
-        // TODO do this only once for all Services
         GraviteeGatewayReference gatewayReference = context.getResource().getSpec().getGateway();
         if (gatewayReference != null) {
             GraviteeGateway gw = gatewayService.lookup(context, gatewayReference);

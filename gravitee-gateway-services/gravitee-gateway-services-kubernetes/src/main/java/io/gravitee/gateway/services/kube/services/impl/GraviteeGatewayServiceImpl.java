@@ -118,15 +118,6 @@ public class GraviteeGatewayServiceImpl
                         .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
                 break;
             case MODIFIED:
-                pipeline =
-                    Flowable
-                        .just(context)
-                        .map(this::computeBackendConfigHashCode)
-                        .map(this::validateAuthentication)
-                        .map(this::validateResources)
-                        .map(this::notifyListeners)
-                        .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
-                break;
             case REFERENCE_UPDATED:
                 pipeline =
                     Flowable

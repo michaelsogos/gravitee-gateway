@@ -16,7 +16,7 @@
 package io.gravitee.gateway.services.kube.managers;
 
 import io.fabric8.kubernetes.client.Watch;
-import io.gravitee.common.component.AbstractLifecycleComponent;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeServicesList;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
@@ -25,10 +25,6 @@ import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.watcher.GraviteeServiceWatcher;
 import io.reactivex.Flowable;
 import io.reactivex.schedulers.Schedulers;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -37,11 +33,7 @@ import org.springframework.stereotype.Component;
  * @author GraviteeSource Team
  */
 @Component
-public class GraviteeServicesManager extends AbstractLifecycleComponent<GraviteeServicesManager> implements Publisher<WatchActionContext> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(GraviteeServicesManager.class);
-
-    private Watch serviceWatcher;
+public class GraviteeServicesManager extends AbstractResourceManager<GraviteeServicesManager> {
 
     @Autowired
     private GraviteeServicesService graviteeServices;
@@ -53,16 +45,9 @@ public class GraviteeServicesManager extends AbstractLifecycleComponent<Gravitee
     private GraviteeGatewayService gatewayService;
 
     @Override
-    public void subscribe(Subscriber<? super WatchActionContext> subscriber) {
-        this.serviceWatcher =
-            this.graviteeServices.getCrdClient()
-                .watch(new GraviteeServiceWatcher(subscriber, pluginsService, gatewayService, graviteeServices));
-    }
-
-    @Override
-    protected void doStart() throws Exception {
+    protected void initializeProcessingFlow() {
         Flowable
-            .fromPublisher(this)
+            .fromPublisher(this.publisher)
             .subscribeOn(Schedulers.single())
             .flatMap(graviteeServices::processAction)
             .doOnError(
@@ -83,10 +68,18 @@ public class GraviteeServicesManager extends AbstractLifecycleComponent<Gravitee
     }
 
     @Override
-    protected void doStop() throws Exception {
-        LOGGER.info("Close services watcher");
-        if (this.serviceWatcher != null) {
-            this.serviceWatcher.close();
+    protected void reloadExistingResources() {
+        GraviteeServicesList services = this.graviteeServices.getCrdClient().list();
+        if (services != null) {
+            services.getItems().forEach(service -> {
+                this.publisher.emit(new WatchActionContext<>(service, WatchActionContext.Event.ADDED));
+            });
         }
+    }
+
+    @Override
+    protected Watch getWatcher() {
+        return this.graviteeServices.getCrdClient()
+                        .watch(new GraviteeServiceWatcher(publisher, pluginsService, gatewayService, graviteeServices));
     }
 }

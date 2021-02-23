@@ -18,8 +18,8 @@ package io.gravitee.gateway.services.kube.watcher;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
+import io.gravitee.gateway.services.kube.publisher.GraviteeActionPublisher;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
-import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +31,10 @@ public class GraviteePluginWatcher implements Watcher<GraviteePlugin> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraviteePluginWatcher.class);
 
-    private Subscriber<? super WatchActionContext> subscriber;
+    private GraviteeActionPublisher publisher;
 
-    public GraviteePluginWatcher(Subscriber<? super WatchActionContext> subscriber) {
-        this.subscriber = subscriber;
+    public GraviteePluginWatcher(GraviteeActionPublisher publisher) {
+        this.publisher = publisher;
     }
 
     @Override
@@ -42,13 +42,13 @@ public class GraviteePluginWatcher implements Watcher<GraviteePlugin> {
         LOGGER.info("Action {} received for GraviteePlugin", action);
         switch (action) {
             case ADDED:
-                subscriber.onNext(new WatchActionContext(graviteePlugin, WatchActionContext.Event.ADDED));
+                publisher.emit(new WatchActionContext(graviteePlugin, WatchActionContext.Event.ADDED));
                 break;
             case MODIFIED:
-                subscriber.onNext(new WatchActionContext(graviteePlugin, WatchActionContext.Event.MODIFIED));
+                publisher.emit(new WatchActionContext(graviteePlugin, WatchActionContext.Event.MODIFIED));
                 break;
             case DELETED:
-                subscriber.onNext(new WatchActionContext(graviteePlugin, WatchActionContext.Event.DELETED));
+                publisher.emit(new WatchActionContext(graviteePlugin, WatchActionContext.Event.DELETED));
                 break;
             case ERROR:
                 LOGGER.warn("Action {} received for GraviteePlugin", action);
@@ -62,11 +62,6 @@ public class GraviteePluginWatcher implements Watcher<GraviteePlugin> {
     public void onClose(KubernetesClientException e) {
         if (e != null) {
             LOGGER.debug("Exception received on close plugin watcher", e);
-        }
-
-        // complete the rx subscriber
-        if (this.subscriber != null) {
-            this.subscriber.onComplete();
         }
     }
 }

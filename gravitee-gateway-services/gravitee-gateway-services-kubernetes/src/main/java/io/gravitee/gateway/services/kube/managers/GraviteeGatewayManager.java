@@ -16,8 +16,8 @@
 package io.gravitee.gateway.services.kube.managers;
 
 import io.fabric8.kubernetes.client.Watch;
-import io.gravitee.common.component.AbstractLifecycleComponent;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayList;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
@@ -25,10 +25,6 @@ import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.watcher.GraviteeGatewayWatcher;
 import io.reactivex.Flowable;
 import io.reactivex.schedulers.Schedulers;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -37,11 +33,7 @@ import org.springframework.stereotype.Component;
  * @author GraviteeSource Team
  */
 @Component
-public class GraviteeGatewayManager extends AbstractLifecycleComponent<GraviteeGatewayManager> implements Publisher<WatchActionContext> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(GraviteeGatewayManager.class);
-
-    private Watch gatewayWatcher;
+public class GraviteeGatewayManager extends AbstractResourceManager<GraviteeGatewayManager>  {
 
     @Autowired
     private GraviteeGatewayService graviteeGatewayService;
@@ -50,37 +42,39 @@ public class GraviteeGatewayManager extends AbstractLifecycleComponent<GraviteeG
     private GraviteePluginsService graviteePluginsService;
 
     @Override
-    public void subscribe(Subscriber<? super WatchActionContext> subscriber) {
-        this.gatewayWatcher =
-            this.graviteeGatewayService.getCrdClient()
-                .watch(new GraviteeGatewayWatcher(subscriber, graviteePluginsService, graviteeGatewayService));
-    }
-
-    @Override
-    protected void doStart() throws Exception {
+    protected void initializeProcessingFlow() {
         Flowable
-            .fromPublisher(this)
-            .subscribeOn(Schedulers.single())
-            .flatMap(graviteeGatewayService::processAction)
-            .doOnError(
-                error -> {
-                    if (error instanceof PipelineException) {
-                        final WatchActionContext<GraviteeGateway> context = ((PipelineException) error).getContext();
-                        LOGGER.error("Process Action on GraviteeGateway fails on resource '{}'", context.getResourceName(), error);
-                        graviteeGatewayService.persistAsError(context, ((PipelineException) error).getMessage());
-                    } else {
-                        LOGGER.error("Process Action on GraviteeGateway fails", error);
-                    }
-                }
-            )
-            .subscribe(); // TODO create a LoggerConsumer??
+                .fromPublisher(this.publisher)
+                .subscribeOn(Schedulers.single()) // Single threaded executor to guaranty sequential processing of events
+                .flatMap(graviteeGatewayService::processAction)
+                .doOnError(
+                        error -> {
+                            if (error instanceof PipelineException) {
+                                final WatchActionContext<GraviteeGateway> context = ((PipelineException) error).getContext();
+                                LOGGER.error("Process Action on GraviteeGateway fails on resource '{}'", context.getResourceName(), error);
+                                graviteeGatewayService.persistAsError(context, ((PipelineException) error).getMessage());
+                            } else {
+                                LOGGER.error("Process Action on GraviteeGateway fails", error);
+                            }
+                        }
+                )
+                .subscribe(); // TODO create a LoggerConsumer??
     }
 
     @Override
-    protected void doStop() throws Exception {
-        LOGGER.info("Close gateway watcher");
-        if (this.gatewayWatcher != null) {
-            this.gatewayWatcher.close();
+    protected void reloadExistingResources() {
+        GraviteeGatewayList gateways = this.graviteeGatewayService.getCrdClient().list();
+        if (gateways != null) {
+            gateways.getItems().forEach(gateway -> {
+                this.publisher.emit(new WatchActionContext<>(gateway, WatchActionContext.Event.ADDED));
+            });
         }
     }
+
+    @Override
+    protected Watch getWatcher() {
+        return this.graviteeGatewayService.getCrdClient()
+                        .watch(new GraviteeGatewayWatcher(publisher, graviteePluginsService, graviteeGatewayService));
+    }
+
 }
