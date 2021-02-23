@@ -67,22 +67,18 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         observable.assertNoErrors();
 
         verify(apiManager).register(argThat(api -> {
-                    try {
-                        System.out.println(new ObjectMapper().writeValueAsString(api));
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                    return  api.getAuthentication().equals("JWT")
-                    && api.getAuthenticationDefinition().contains("DA7OLkdACP")
-                    && api.isEnabled()
+                    return  api.isEnabled()
                     && api.getName().equals("my-api")
                     && api.getId().equals("my-api.test-single-standalone.default")
                     && !api.getProxy().getCors().isEnabled()
                     && api.getProxy().getVirtualHosts().get(0).getHost().equals("toto.domain.name:82")
                     && api.getPaths().size() == 2
                     && api.getPaths().containsKey("/*")
+                    && api.getPaths().get("/*").getRules().size() == 1
+                    && api.getPaths().get("/*").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                     && api.getPaths().containsKey("/other-path/")
-                    && api.getPaths().get("/other-path/").getRules().size() == 2
+                    && api.getPaths().get("/other-path/").getRules().size() == 3
+                    && api.getPaths().get("/other-path/").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                     && api.getResources().size() == 1
                     && api.getResources().get(0).getName().equals("my-oauth2-res.test-single-standalone.default")
                     && api.getProxy().getGroups().size() == 1
@@ -137,17 +133,18 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         observable.assertNoErrors();
 
         verify(apiManager).register(argThat(api ->
-                api.getAuthentication().equals("JWT")
-                        && api.getAuthenticationDefinition().contains("DA7OLkdACP")
-                        && api.isEnabled()
+                        api.isEnabled()
                         && api.getName().equals("my-api")
                         && api.getId().equals("my-api.test-single-ref-jwt.default")
                         && !api.getProxy().getCors().isEnabled()
                         && api.getProxy().getVirtualHosts().get(0).getHost().equals("toto.domain.name:82")
                         && api.getPaths().size() == 2
                         && api.getPaths().containsKey("/*")
+                        && api.getPaths().get("/*").getRules().size() == 1
+                        && api.getPaths().get("/*").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                         && api.getPaths().containsKey("/other-path/")
-                        && api.getPaths().get("/other-path/").getRules().size() == 2
+                        && api.getPaths().get("/other-path/").getRules().size() == 3
+                        && api.getPaths().get("/other-path/").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                         && api.getResources().size() == 1
                         && api.getResources().get(0).getName().equals("oauth2-resource.dep-plugins.default")
                         && api.getProxy().getGroups().size() == 1
@@ -176,17 +173,18 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         observable.assertNoErrors();
 
         verify(apiManager).register(argThat(api ->
-                api.getAuthentication().equals("JWT")
-                        && api.getAuthenticationDefinition().contains("DA7OLkdACP")
-                        && api.isEnabled()
+                        api.isEnabled()
                         && api.getName().equals("my-api")
                         && api.getId().equals("my-api.test-single-ref-gw.default")
                         && !api.getProxy().getCors().isEnabled()
                         && api.getProxy().getVirtualHosts().get(0).getHost().equals("toto.domain.name:82")
                         && api.getPaths().size() == 2
                         && api.getPaths().containsKey("/*")
+                        && api.getPaths().get("/*").getRules().size() == 1
+                        && api.getPaths().get("/*").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                         && api.getPaths().containsKey("/other-path/")
-                        && api.getPaths().get("/other-path/").getRules().size() == 2
+                        && api.getPaths().get("/other-path/").getRules().size() == 3
+                        && api.getPaths().get("/other-path/").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                         && api.getResources().size() == 1
                         && api.getResources().get(0).getName().equals("my-oauth2-res.dep-gateway.default")
                         && api.getProxy().getGroups().size() == 1
@@ -217,17 +215,18 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         observable.assertNoErrors();
 
         verify(apiManager).register(argThat(api ->
-                api.getAuthentication().equals("JWT")
-                        && api.getAuthenticationDefinition().contains("DA7OLkdACP")
-                        && api.isEnabled()
+                        api.isEnabled()
                         && api.getName().equals("my-api")
                         && api.getId().equals("my-api.test-single-ref-gw.default")
                         && !api.getProxy().getCors().isEnabled()
                         && api.getProxy().getVirtualHosts().get(0).getHost().equals("toto.domain.name:82")
                         && api.getPaths().size() == 2
                         && api.getPaths().containsKey("/*")
+                        && api.getPaths().get("/*").getRules().size() == 1
+                        && api.getPaths().get("/*").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                         && api.getPaths().containsKey("/other-path/")
-                        && api.getPaths().get("/other-path/").getRules().size() == 2
+                        && api.getPaths().get("/other-path/").getRules().size() == 3
+                        && api.getPaths().get("/other-path/").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
                         && api.getResources().size() == 1
                         && api.getResources().get(0).getName().equals("oauth2-resource.dep-plugins-ref.default")
                         && api.getProxy().getGroups().size() == 1

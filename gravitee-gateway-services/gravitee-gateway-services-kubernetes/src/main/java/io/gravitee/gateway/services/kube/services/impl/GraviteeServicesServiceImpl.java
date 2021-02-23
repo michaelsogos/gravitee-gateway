@@ -28,6 +28,7 @@ import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.resources.service.*;
+import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
@@ -128,8 +129,7 @@ public class GraviteeServicesServiceImpl
         return prepareApiDefinition(context)
                 .map(this::buildApiPaths)
                 .map(this::buildApiProxy)
-                .map(this::buildApiResources)
-                .map(this::applyAuthenticationPlugin).reduce(context, (acc, ctx) -> {
+                .map(this::buildApiResources).reduce(context, (acc, ctx) -> {
                     acc.addApi(ctx.getApi());
                     return acc;
                 }).toFlowable();
@@ -271,7 +271,7 @@ public class GraviteeServicesServiceImpl
 
     private SingleServiceActionContext buildApiPaths(SingleServiceActionContext context) {
         Api api = context.getApi();
-
+        final Policy authPolicy = getAuthenticationPolicy(context);
         List<ServicePath> svcPaths = context.getServiceResource().getPaths();
         Map<String, Path> apiPaths = svcPaths
             .stream()
@@ -280,7 +280,12 @@ public class GraviteeServicesServiceImpl
                     Path path = new Path();
                     path.setPath(svcPath.getPrefix());
 
-                    path.setRules(
+                    Rule authRule = new Rule();
+                    authRule.setPolicy(authPolicy);
+
+                    List<Rule> rules = new ArrayList<>();
+                    rules.add(authRule);
+                    rules.addAll(
                         svcPath
                             .getRules()
                             .stream()
@@ -314,6 +319,9 @@ public class GraviteeServicesServiceImpl
                             .filter(Objects::nonNull)
                             .collect(Collectors.toList())
                     );
+
+                    path.setRules(rules);
+
                     return path;
                 }
             )
@@ -435,40 +443,26 @@ public class GraviteeServicesServiceImpl
             .collect(Collectors.toSet());
     }
 
-    private SingleServiceActionContext applyAuthenticationPlugin(SingleServiceActionContext context) {
+    protected Policy getAuthenticationPolicy(SingleServiceActionContext context) {
         Api api = context.getApi();
+        PluginRevision<Policy> authenticationPolicy = null;
         if (context.getServiceResource().getAuthentication() != null) {
-            PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, context.getServiceResource().getAuthentication(), null);
-            setAuthenticationPlugin(api, authenticationPolicy);
+            authenticationPolicy = pluginsService.buildPolicy(context, context.getServiceResource().getAuthentication(), null);
         } else if (context.getServiceResource().getAuthenticationReference() != null) {
-            PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, null, context.getServiceResource().getAuthenticationReference());
-            setAuthenticationPlugin(api, authenticationPolicy);
+            authenticationPolicy = pluginsService.buildPolicy(context, null, context.getServiceResource().getAuthenticationReference());
         } else if (context.getGateway() != null) {
             GraviteeGateway gateway = context.getGateway();
             if (gateway.getSpec().getAuthentication() != null) {
-                PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, gateway.getSpec().getAuthentication(), null);
-                setAuthenticationPlugin(api, authenticationPolicy);
+                authenticationPolicy = pluginsService.buildPolicy(context, gateway.getSpec().getAuthentication(), null);
             } else if (gateway.getSpec().getAuthenticationReference() != null) {
-                PluginRevision<Policy> authenticationPolicy = pluginsService.buildPolicy(context, null, gateway.getSpec().getAuthenticationReference());
-                setAuthenticationPlugin(api, authenticationPolicy);
+                authenticationPolicy = pluginsService.buildPolicy(context, null, gateway.getSpec().getAuthenticationReference());
             }
         }
-        return context;
-    }
 
-    private void setAuthenticationPlugin(Api api, PluginRevision<Policy> authenticationPolicy) {
-        if (authenticationPolicy.isValid()) {
-            final Policy plugin = authenticationPolicy.getPlugin();
-            LOGGER.info("Api '{}' authenticated by '{}' policy", plugin.getName());
-            if ("key_less".equalsIgnoreCase(plugin.getName())) {
-                api.setAuthentication("key_less");
-            } else if ("jwt".equalsIgnoreCase(plugin.getName())) {
-                api.setAuthentication("JWT");
-                api.setAuthenticationDefinition(plugin.getConfiguration());
-            } else if ("oauth2".equalsIgnoreCase(plugin.getName())) {
-                api.setAuthentication("OAUTH2");
-                api.setAuthenticationDefinition(plugin.getConfiguration());
-            }
+        if (authenticationPolicy == null || !authenticationPolicy.isValid()) {
+            throw new PipelineException(context, "Authentication policy is missing for API '" + api.getId() +"'");
         }
+
+        return authenticationPolicy.getPlugin();
     }
 }
