@@ -19,9 +19,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.definition.model.LoadBalancerType;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
+import io.gravitee.gateway.services.kube.crds.cache.GraviteeServicesCacheEntry;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
+import io.gravitee.gateway.services.kube.services.impl.GraviteeServicesServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.ServiceWatchActionContext;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.utils.ObjectMapperHelper;
@@ -46,7 +48,7 @@ import static org.mockito.Mockito.*;
 public class GraviteeServiceServiceTest extends AbstractServiceTest {
 
     @Autowired
-    protected GraviteeServicesService cut;
+    protected GraviteeServicesServiceImpl cut;
 
     @Autowired
     protected ApiManager apiManager;
@@ -54,10 +56,11 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
     @Before
     public void prepareTest() {
         reset(apiManager);
+        cut.getServiceCache().clear();
     }
 
     @Test
-    public void shouldDeploy_SingleService_JWT() {
+    public void shouldDeploy_SingleService_WithoutGateway() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", true);
 
@@ -114,7 +117,7 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
     }
 
     @Test
-    public void shouldDeploy_SingleService_Using_ExternalPlugins() {
+    public void shouldNotDeploy_MissingPlugins() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-ref-jwt", "/kubernetes/services/test-gravitee-service-single-references-import-jwt.yml", true);
 
@@ -124,11 +127,16 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         observable.assertError(error -> error instanceof PipelineException && error.getMessage().contains("Reference 'dep-plugins' undefined in namespace"));
 
         verify(apiManager, never()).register(any());
+    }
 
-        // Deploy the CustomResource Plugin
-        populatePluginResource("default", "dep-plugins", "/kubernetes/services/dependencies/dep-gravitee-plugins.yml", false);
+    @Test
+    public void shouldDeploy_SingleService_Using_ExternalPlugins() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populateServicesResource("default", "test-single-ref-jwt", "/kubernetes/services/test-gravitee-service-single-references-import-jwt.yml", true);
+        populatePluginResource("default", "dep-plugins", "/kubernetes/services/dependencies/dep-gravitee-plugins.yml", false, 2);
 
-        observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).test();
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-references-import-jwt.yml", GraviteeServices.class);
+        TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).test();
         observable.awaitTerminalEvent();
         observable.assertNoErrors();
 
@@ -155,7 +163,7 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
     }
 
     @Test
-    public void shouldDeploy_SingleService_Using_StandAlone_Gateway() {
+    public void shouldDeploy_SingleService_WithGateway() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-ref-gw", "/kubernetes/services/test-gravitee-service-single-references-import-gateway.yml", true);
 
@@ -196,21 +204,14 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
 
 
     @Test
-    public void shouldDeploy_SingleService_Using_Reference_Gateway() {
+    public void shouldDeploy_SingleService_WithGateway_UsingReference() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-ref-gw", "/kubernetes/services/test-gravitee-service-single-references-import-gateway-ref.yml", true);
         populateGatewayResource("default", "dep-gateway-ref", "/kubernetes/services/dependencies/dep-gravitee-gateway-reference.yml", false);
+        populatePluginResource("default", "dep-plugins-ref", "/kubernetes/services/dependencies/dep-gravitee-plugins-ref.yml", false, 2);
 
         GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-references-import-gateway-ref.yml", GraviteeServices.class);
         TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).test();
-        observable.awaitTerminalEvent();
-        observable.assertError(error -> error instanceof PipelineException && error.getMessage().contains("Reference 'dep-plugins-ref' undefined in namespace"));
-
-        // Deploy CustomResource Plugins used by Gateway
-        populatePluginResource("default", "dep-plugins-ref", "/kubernetes/services/dependencies/dep-gravitee-plugins-ref.yml", false);
-
-        services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-references-import-gateway-ref.yml", GraviteeServices.class);
-        observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).test();
         observable.awaitTerminalEvent();
         observable.assertNoErrors();
 
@@ -236,5 +237,92 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         ));
     }
 
+    @Test
+    public void shouldNotDeploy_SingleService_MissingGatewayReference() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populateServicesResource("default", "test-single-ref-gw", "/kubernetes/services/test-gravitee-service-single-references-import-gateway-ref.yml", true);
+        populateGatewayResource("default", "dep-gateway-ref", "/kubernetes/services/dependencies/dep-gravitee-gateway-reference.yml", false);
 
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-references-import-gateway-ref.yml", GraviteeServices.class);
+        TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).test();
+        observable.awaitTerminalEvent();
+        observable.assertError(error -> error instanceof PipelineException && error.getMessage().contains("Reference 'dep-plugins-ref' undefined in namespace"));
+    }
+
+    @Test
+    public void shouldDeploy_OnChanges_WithoutGateway() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", true);
+
+        GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+        String resourceFullName = "test-single-standalone.default";
+        final String serviceIdentifier = "my-api." + resourceFullName;
+        cacheEntry.setHash(serviceIdentifier, "##changed");
+        cut.getServiceCache().put(resourceFullName, cacheEntry);
+
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
+        TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.MODIFIED)).test();
+        observable.awaitTerminalEvent();
+        observable.assertNoErrors();
+
+        verify(apiManager).register(argThat(api -> {
+                    return  api.isEnabled()
+                            && api.getName().equals("my-api")
+                            && api.getId().equals(serviceIdentifier)
+                            && !api.getProxy().getCors().isEnabled()
+                            && api.getProxy().getVirtualHosts().get(0).getHost().equals("toto.domain.name:82")
+                            && api.getPaths().size() == 2
+                            && api.getPaths().containsKey("/*")
+                            && api.getPaths().get("/*").getRules().size() == 1
+                            && api.getPaths().get("/*").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
+                            && api.getPaths().containsKey("/other-path/")
+                            && api.getPaths().get("/other-path/").getRules().size() == 3
+                            && api.getPaths().get("/other-path/").getRules().get(0).getPolicy().getConfiguration().contains("DA7OLkdACP")
+                            && api.getResources().size() == 1
+                            && api.getResources().get(0).getName().equals("my-oauth2-res." + resourceFullName)
+                            && api.getProxy().getGroups().size() == 1
+                            && api.getProxy().getGroups().stream()
+                            .filter(endpointGroup -> endpointGroup.getLoadBalancer().getType().equals(LoadBalancerType.ROUND_ROBIN)).count() == 1
+                            && api.getProxy().getGroups().stream().findFirst().get().getEndpoints().size() == 2;
+                }
+        ));
+    }
+
+    @Test
+    public void shouldNotDeploy_IfNoChanges() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", true);
+
+        GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+        String resourceFullName = "test-single-standalone.default";
+        final String serviceIdentifier = "my-api." + resourceFullName;
+        cacheEntry.setHash(serviceIdentifier, "aa93800601ff5f13165d");
+        cut.getServiceCache().put(resourceFullName, cacheEntry);
+
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
+        TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.MODIFIED)).test();
+        observable.awaitTerminalEvent();
+        observable.assertNoErrors();
+
+        verify(apiManager, never()).register(any());
+    }
+
+    @Test
+    public void shouldUnDeploy_IfApiDisabled() {
+        populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-disable-api-level.yml", true);
+
+        GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+        String resourceFullName = "test-single-standalone.default";
+        final String serviceIdentifier = "my-api." + resourceFullName;
+        cacheEntry.setServiceEnabled(serviceIdentifier, true);
+        cut.getServiceCache().put(resourceFullName, cacheEntry);
+
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-disable-api-level.yml", GraviteeServices.class);
+        TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.MODIFIED)).test();
+        observable.awaitTerminalEvent();
+        observable.assertNoErrors();
+
+        verify(apiManager, never()).register(any());
+        verify(apiManager, times(1)).unregister(argThat(api -> api.equals(serviceIdentifier)));
+    }
 }

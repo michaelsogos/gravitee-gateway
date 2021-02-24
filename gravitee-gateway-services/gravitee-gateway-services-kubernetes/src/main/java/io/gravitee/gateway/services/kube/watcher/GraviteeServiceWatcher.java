@@ -19,6 +19,7 @@ import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayReference;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.publisher.GraviteeActionPublisher;
@@ -108,8 +109,6 @@ public class GraviteeServiceWatcher implements Watcher<GraviteeServices>, Gravit
         List<GraviteeServices> services = servicesService.listAllServices();
         for (GraviteeServices resource : services) {
             WatchActionContext<GraviteeServices> derivedContext = new WatchActionContext<>(resource, Event.REFERENCE_UPDATED);
-            derivedContext.setHttpConfigHashCode(context.getHttpConfigHashCode());
-            derivedContext.getPluginRevisions().addAll(context.getPluginRevisions());
             publisher.emit(derivedContext);
         }
     }

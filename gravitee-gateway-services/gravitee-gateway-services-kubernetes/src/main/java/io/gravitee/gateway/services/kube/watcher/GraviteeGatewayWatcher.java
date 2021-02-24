@@ -90,8 +90,6 @@ public class GraviteeGatewayWatcher implements Watcher<GraviteeGateway>, Gravite
                 resource,
                 WatchActionContext.Event.REFERENCE_UPDATED
             );
-            derivedContext.setHttpConfigHashCode(context.getHttpConfigHashCode());
-            derivedContext.getPluginRevisions().addAll(context.getPluginRevisions());
             publisher.emit(derivedContext);
         }
     }

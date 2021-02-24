@@ -35,4 +35,5 @@ public interface GraviteeServicesService {
     List<GraviteeServices> listAllServices();
 
     MixedOperation<GraviteeServices, GraviteeServicesList, DoneableGraviteeServices, Resource<GraviteeServices, DoneableGraviteeServices>> getCrdClient();
+
 }

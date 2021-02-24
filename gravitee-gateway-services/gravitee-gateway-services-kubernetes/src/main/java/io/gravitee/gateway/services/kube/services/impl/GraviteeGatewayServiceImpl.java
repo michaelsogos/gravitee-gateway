@@ -138,7 +138,7 @@ public class GraviteeGatewayServiceImpl
         LOGGER.debug("Validate and Compute HashCode for authentication plugin of GraviteeGateway '{}'", context.getResourceName());
         GraviteeGatewaySpec spec = context.getResource().getSpec();
         if (spec.getAuthentication() != null) {
-            PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, spec.getAuthentication(), convertToRef(context, "authenication"));
+            PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, spec.getAuthentication(), convertToRef(context, "authentication"));
             context.getPluginRevisions().add(policy);
         } else if (spec.getAuthenticationReference() != null) {
             PluginRevision<Policy> policy = graviteePluginsService.buildPolicy(context, null, spec.getAuthenticationReference());
@@ -217,7 +217,7 @@ public class GraviteeGatewayServiceImpl
             // updating a CR status will trigger a new MODIFIED event, we have to test
             // if some plugins changed in order stop an infinite loop
             status.getHashCodes().setPlugins(newHashCodes);
-            status.getHashCodes().setDefaultHttpConfig(context.getHttpConfigHashCode());
+            status.getHashCodes().setBackendConfig(context.getHttpConfigHashCode());
             return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
         } else {
             LOGGER.debug("No changes in GravteeGateway '{}', bypass status update", context.getResourceName());
@@ -232,7 +232,7 @@ public class GraviteeGatewayServiceImpl
     ) {
         return (
             !Maps.difference(newHashCodes, status.getHashCodes().getPlugins()).areEqual() ||
-            !context.getHttpConfigHashCode().equals(status.getHashCodes().getDefaultHttpConfig())
+            !context.getHttpConfigHashCode().equals(status.getHashCodes().getBackendConfig())
         );
     }
 

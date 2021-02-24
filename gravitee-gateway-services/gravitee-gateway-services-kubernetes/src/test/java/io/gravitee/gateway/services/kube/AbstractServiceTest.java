@@ -58,30 +58,42 @@ public class AbstractServiceTest {
     }
 
     protected void populatePluginResource(String ns, String name, String filename, boolean mockStatusUpdate) {
+        populatePluginResource(ns, name, filename, mockStatusUpdate, 1);
+    }
+
+    protected void populatePluginResource(String ns, String name, String filename, boolean mockStatusUpdate, int times) {
         GraviteePlugin resource = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name).andReturn(200, resource).always();
+        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name).andReturn(200, resource).times(times);
         if (mockStatusUpdate) {
             GraviteePlugin resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteePlugin.class);
             GraviteePluginStatus status = new GraviteePluginStatus();
             resourceWithStatus.setStatus(status);
-            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name +"/status").andReturn(200, resourceWithStatus).always();
+            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-plugins/" + name +"/status").andReturn(200, resourceWithStatus).times(times);
         }
     }
 
     protected void populateGatewayResource(String ns, String name, String filename, boolean mockStatusUpdate) {
+        populateGatewayResource(ns, name, filename, mockStatusUpdate, 1);
+    }
+
+    protected void populateGatewayResource(String ns, String name, String filename, boolean mockStatusUpdate, int times) {
         GraviteeGateway resource = ObjectMapperHelper.readYamlAs(filename, GraviteeGateway.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-gateways/" + name).andReturn(200, resource).always();
+        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-gateways/" + name).andReturn(200, resource).times(times);
         if (mockStatusUpdate) {
             GraviteeGateway resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteeGateway.class);
             GraviteeGatewayStatus status = new GraviteeGatewayStatus();
             resourceWithStatus.setStatus(status);
-            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-gateways/" + name +"/status").andReturn(200, resourceWithStatus).always();
+            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-gateways/" + name +"/status").andReturn(200, resourceWithStatus).times(times);
         }
     }
 
     protected void populateServicesResource(String ns, String name, String filename, boolean mockStatusUpdate) {
+        populateServicesResource(ns, name, filename, mockStatusUpdate, 1);
+    }
+
+    protected void populateServicesResource(String ns, String name, String filename, boolean mockStatusUpdate, int times) {
         GraviteeServices resource = ObjectMapperHelper.readYamlAs(filename, GraviteeServices.class);
-        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-services/" + name).andReturn(200, resource).always();
+        kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-services/" + name).andReturn(200, resource).times(times);
         if (mockStatusUpdate) {
             GraviteeServices resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteeServices.class);
             /*GraviteeGatewayStatus status = new GraviteeGatewayStatus();

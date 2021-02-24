@@ -32,7 +32,6 @@ public class GraviteeServicesCacheEntry {
     Map<String, Boolean> serviceEnabled = new HashMap<>();
     String gateway;
 
-
     public List<PluginRevision<?>> getPlugins(String service) {
         return serviceToPlugins.get(service);
     }
@@ -54,7 +53,7 @@ public class GraviteeServicesCacheEntry {
     }
 
     public void setServiceEnabled(String service, Boolean enabled) {
-        serviceWithGatewayAuth.put(service, enabled);
+        serviceEnabled.put(service, enabled);
     }
 
     public String getHash(String service) {

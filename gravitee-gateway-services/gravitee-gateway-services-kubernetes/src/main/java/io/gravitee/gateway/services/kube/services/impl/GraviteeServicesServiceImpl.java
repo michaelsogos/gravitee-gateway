@@ -214,7 +214,7 @@ public class GraviteeServicesServiceImpl
                     LOGGER.debug("Ignore disabled Api '{}'", api.getId());
                 }
             } else {
-                boolean needRedeploy = entry != null && !Objects.equals(entry.getHash(api.getId()), context.getCacheEntry().getHash(api.getId()));
+                boolean needRedeploy = (entry == null || !Objects.equals(entry.getHash(api.getId()), context.getCacheEntry().getHash(api.getId())));
                 if (needRedeploy) {
                     LOGGER.info("Deploy Api '{}'", api.getId());
                     apiManager.register(api);
@@ -495,5 +495,12 @@ public class GraviteeServicesServiceImpl
         }
 
         return authenticationPolicy.getPlugin();
+    }
+
+    /**
+     * used only for tests
+     */
+    public final Map<String, GraviteeServicesCacheEntry> getServiceCache() {
+        return serviceCache;
     }
 }

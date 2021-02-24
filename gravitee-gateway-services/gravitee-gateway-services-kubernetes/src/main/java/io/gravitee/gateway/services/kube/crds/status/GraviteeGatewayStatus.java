@@ -46,15 +46,15 @@ public class GraviteeGatewayStatus {
 
     public class GatewayHashCodes {
 
-        private String defaultHttpConfig = "";
+        private String backendConfig = "";
         private Map<String, String> plugins = new HashMap<>();
 
-        public String getDefaultHttpConfig() {
-            return defaultHttpConfig;
+        public String getBackendConfig() {
+            return backendConfig;
         }
 
-        public void setDefaultHttpConfig(String defaultHttpConfig) {
-            this.defaultHttpConfig = defaultHttpConfig;
+        public void setBackendConfig(String backendConfig) {
+            this.backendConfig = backendConfig;
         }
 
         public Map<String, String> getPlugins() {
