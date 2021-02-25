@@ -23,11 +23,12 @@
     <parent>
         <artifactId>gravitee-gateway-services</artifactId>
         <groupId>io.gravitee.gateway.services</groupId>
-        <version>3.6.0-SNAPSHOT</version>
+        <version>3.7.0-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
 
+    <name>Gravitee.io APIM - Gateway - Services - Kubernetes</name>
     <artifactId>gravitee-gateway-services-kubernetes</artifactId>
 
     <properties>

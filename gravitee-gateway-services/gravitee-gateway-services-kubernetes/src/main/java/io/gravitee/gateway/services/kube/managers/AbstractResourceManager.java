@@ -34,15 +34,17 @@ public abstract class AbstractResourceManager<T>  extends AbstractLifecycleCompo
 
     @Override
     protected void doStart() throws Exception {
-        initializeProcessingFlow();
-        reloadExistingResources();
-        this.watcher = getWatcher();
+        if (!this.lifecycle.started()) {
+            initializeProcessingFlow();
+            reloadExistingResources();
+            this.watcher = getWatcher();
+        }
     }
 
     @Override
     protected void doStop() throws Exception {
-        LOGGER.info("Close services watcher");
         if (this.watcher != null) {
+            LOGGER.info("Close services watcher");
             this.watcher.close();
         }
 

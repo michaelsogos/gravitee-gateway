@@ -15,30 +15,22 @@
  */
 package io.gravitee.gateway.services.kube;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.utils.Serialization;
 import io.gravitee.common.service.AbstractService;
-import io.gravitee.definition.model.LoadBalancerType;
-import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
-import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.managers.AbstractResourceManager;
 import io.gravitee.gateway.services.kube.managers.GraviteeGatewayManager;
 import io.gravitee.gateway.services.kube.managers.GraviteePluginsManager;
 import io.gravitee.gateway.services.kube.managers.GraviteeServicesManager;
 import io.gravitee.gateway.services.kube.utils.Fabric8sMapperUtils;
+import io.gravitee.gateway.services.kube.webhook.AdmissionHookManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -61,10 +53,26 @@ public class KubeSyncService extends AbstractService {
     @Autowired
     public GraviteeServicesManager servicesManager;
 
+    @Autowired
+    protected AdmissionHookManager hookManager;
+
+    ScheduledExecutorService executorService;
+
     @Override
     protected void doStart() throws Exception {
         Fabric8sMapperUtils.initJsonMapper();
 
+        // If the CRDS are not defined when the Gateway start, we try periodically to connect to K8S API Server
+        // to avoid prevent the Gateway startup.
+        executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.schedule(new StarterThread(executorService), 0, TimeUnit.SECONDS);
+
+        if (hookManager != null) {
+            hookManager.registerHooks();
+        }
+    }
+
+    private void startManagers() throws Exception {
         if (pluginsManager != null) {
             pluginsManager.start();
         }
@@ -76,25 +84,53 @@ public class KubeSyncService extends AbstractService {
         }
     }
 
-
     @Override
     protected void doStop() throws Exception {
         LOGGER.info("APIM Controller stopping...");
-        if (servicesManager != null) {
-            servicesManager.stop();
+        stopManagers();
+
+        if (this.client != null) {
+            this.client.close();
         }
 
-        if (gatewayManager != null) {
-            gatewayManager.stop();
+        if (this.executorService != null && !this.executorService.isTerminated()) {
+            this.executorService.shutdownNow();
+        }
+    }
+
+    private void stopManagers() {
+        stopManagerQuietly(this.servicesManager);
+        stopManagerQuietly(this.gatewayManager);
+        stopManagerQuietly(this.pluginsManager);
+     }
+
+    private void stopManagerQuietly(AbstractResourceManager manager) {
+        if (manager != null) {
+            try {
+                manager.stop();
+            } catch (Exception e) {
+                LOGGER.warn("'{}' Manager can't be stopped", manager.getClass().getName(), e);
+            }
+        }
+    }
+
+    private final class StarterThread implements Runnable {
+        ScheduledExecutorService executorService;
+
+        public StarterThread(ScheduledExecutorService executorService) {
+            this.executorService = executorService;
         }
 
-        if (pluginsManager != null) {
-            pluginsManager.stop();
+        @Override
+        public void run() {
+            try {
+                LOGGER.debug("Trying to connect to kubernetes API Server...");
+                startManagers();
+                executorService.shutdownNow();
+            } catch (Exception e) {
+                stopManagers();
+                executorService.schedule(this, 5, TimeUnit.SECONDS);// TODO make configurable
+            }
         }
-
-        if (client != null) {
-            client.close();
-        }
-
     }
 }

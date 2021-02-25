@@ -1,0 +1,32 @@
+# Generate CA
+
+```
+# Create certificate authority.
+openssl req -newkey rsa:4096 -keyform PEM -keyout ca.key -x509 -days 3650 -subj "/CN=gateway-admission-ca" -passout pass:ca-secret -outform PEM -out ca.pem
+openssl pkcs12 -export -inkey ca.key -in ca.pem -out ca.p12 -passin pass:ca-secret -passout pass:ca-secret -name adminssion-webhook-ca
+
+# Server key (localhost)
+openssl genrsa -out server.key 4096
+openssl req -new -key server.key -out server.csr -sha256 -subj "/CN=gateway-admission-webhook.default.svc"
+openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -set_serial 100 -extensions server -days 1460 -outform PEM -out server.cer -sha256 -passin pass:ca-secret
+openssl pkcs12 -export -inkey server.key -in server.cer -out server.p12 -passout pass:server-secret -name gateway-server
+
+```
+
+## generate CABundle value
+
+```
+$( cat ca.pem | head -n -1 | tail -n+2 | awk 'NF {sub(/\r/, ""); printf "%s",$0;}')
+```
+
+## Generate PEM from CRT & KEY
+
+```
+openssl rsa -inform DER -in server.key > server-key.pem
+openssl x509 -inform DER -in server.crt > server.pem
+```
+Use the server-key as value:
+
+GRAVITEE_SERVICES_CORE_HTTP_SECURED=true
+GRAVITEE_SERVICES_CORE_HTTP_SSL_KEYSTORE_PATH=/home/eric/workspace/home-gw/server-key.pem
+GRAVITEE_SERVICES_CORE_HTTP_SSL_KEYSTORE_TYPE=PEM

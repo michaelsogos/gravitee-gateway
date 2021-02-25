@@ -29,7 +29,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ComponentScan(basePackages = {
         "io.gravitee.gateway.services.kube.managers",
-        "io.gravitee.gateway.services.kube.services"
+        "io.gravitee.gateway.services.kube.services",
+        "io.gravitee.gateway.services.kube.webhook"
 })
 public class KubeSyncConfiguration {
 
