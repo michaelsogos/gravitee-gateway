@@ -21,6 +21,7 @@ import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
+import io.gravitee.gateway.services.kube.services.impl.ServiceWatchActionContext;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.watcher.GraviteeServiceWatcher;
 import io.reactivex.Flowable;
@@ -72,7 +73,7 @@ public class GraviteeServicesManager extends AbstractResourceManager<GraviteeSer
         GraviteeServicesList services = this.graviteeServices.getCrdClient().list();
         if (services != null) {
             services.getItems().forEach(service -> {
-                this.publisher.emit(new WatchActionContext<>(service, WatchActionContext.Event.ADDED));
+                this.publisher.emit(new ServiceWatchActionContext(service, WatchActionContext.Event.ADDED));
             });
         }
     }

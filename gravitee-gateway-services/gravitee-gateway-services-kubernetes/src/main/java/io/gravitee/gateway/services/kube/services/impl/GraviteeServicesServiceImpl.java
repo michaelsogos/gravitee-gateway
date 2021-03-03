@@ -18,6 +18,7 @@ package io.gravitee.gateway.services.kube.services.impl;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
+import io.gravitee.common.http.HttpMethod;
 import io.gravitee.definition.model.VirtualHost;
 import io.gravitee.definition.model.*;
 import io.gravitee.definition.model.endpoint.HttpEndpoint;
@@ -45,6 +46,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
 import static io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration.buildHttpClientSslOptions;
 import static io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration.buildHttpProxy;
@@ -113,14 +115,10 @@ public class GraviteeServicesServiceImpl
         Flowable pipeline = null;
         switch (context.getEvent()) {
             case ADDED:
-                pipeline = validateResource((ServiceWatchActionContext) context)
-                        .map(this::addService)
-                        .map(this::preserveApiData);
-                break;
             case MODIFIED:
             case REFERENCE_UPDATED:
                 pipeline = validateResource((ServiceWatchActionContext) context)
-                        .map(this::updateService)
+                        .map(this::deployService)
                         .map(this::preserveApiData);
                 break;
             case DELETED:
@@ -221,20 +219,21 @@ public class GraviteeServicesServiceImpl
         this.pluginCacheManager.removePluginsUsedBy(context.getResourceFullName());
         return context;
     }
-
+/*
     private ServiceWatchActionContext addService(ServiceWatchActionContext context) {
         for (Api api : context.getApis()) {
             if (api.isEnabled()) {
                 LOGGER.info("Deploy Api '{}'", api.getId());
+                api.setDeployedAt(new Date());
                 apiManager.register(api);
             } else {
                 LOGGER.debug("Ignore disabled Api '{}'", api.getId());
             }
         }
         return context;
-    }
+    }*/
 
-    private ServiceWatchActionContext updateService(ServiceWatchActionContext context) {
+    private ServiceWatchActionContext deployService(ServiceWatchActionContext context) {
         for (Api api : context.getApis()) {
             ServicesCacheEntry entry = this.servicesCacheManager.get(context.getResourceFullName());
             if (!api.isEnabled()) {
@@ -249,9 +248,10 @@ public class GraviteeServicesServiceImpl
                 boolean needRedeploy = (entry == null || !Objects.equals(entry.getHash(api.getId()), context.getServiceCacheEntry().getHash(api.getId())));
                 if (needRedeploy) {
                     LOGGER.info("Deploy Api '{}'", api.getId());
+                    api.setDeployedAt(new Date());
                     apiManager.register(api);
                 } else {
-                    LOGGER.debug("Api '{}' doesn't change", api.getId());
+                    LOGGER.debug("Api '{}' is disabled or doesn't change", api.getId());
                 }
             }
         }
@@ -271,7 +271,11 @@ public class GraviteeServicesServiceImpl
         api.setId(context.buildApiId());
         api.setEnabled(context.getServiceResource().isEnabled() && context.getResource().getSpec().isEnabled());
         api.setPlanRequired(false); // TODO maybe useless for the right reactable type
+        api.setDefinitionVersion(DefinitionVersion.V1);
+        // do not call api.setDeployedAt(new Date()) here to avoid Hashcode update
+
         context.setApi(api);
+
         return context;
     }
 
@@ -322,6 +326,7 @@ public class GraviteeServicesServiceImpl
                     path.setPath(svcPath.getPrefix());
 
                     Rule authRule = new Rule();
+                    authRule.setMethods(newHashSet(HttpMethod.values()));
                     authRule.setPolicy(authPolicy);
 
                     List<Rule> rules = new ArrayList<>();
@@ -333,7 +338,12 @@ public class GraviteeServicesServiceImpl
                             .map(
                                 r -> {
                                     Rule rule = new Rule();
-                                    rule.setMethods(r.getMethods());
+                                    Set<HttpMethod> methods = r.getMethods();
+                                    if (methods == null || methods.isEmpty()) {
+                                        rule.setMethods(newHashSet(HttpMethod.values()));
+                                    } else {
+                                        rule.setMethods(methods);
+                                    }
                                     final Plugin policy = r.getPolicy();
 
                                     if (policy != null) {

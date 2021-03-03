@@ -54,114 +54,11 @@ import org.springframework.context.annotation.Configuration;
  * @author GraviteeSource Team
  */
 @Configuration
-public class FreePlanApiHandlerConfiguration {
-
-    @Bean
-    public PathResolver pathResolver(Api api) {
-        return new ApiPathResolverImpl(api);
-    }
-
-    @Bean
-    public ReactorHandler apiReactorHandler(Api api) {
-        return new ApiReactorHandler();
-    }
-
-    @Bean
-    public PolicyFactory policyFactory() {
-        return new PolicyFactoryImpl();
-    }
-
-    @Bean
-    public PolicyManager policyManager(PolicyFactory factory) {
-        return new DefaultPolicyManager(factory);
-    }
-
-    @Bean
-    public PolicyConfigurationFactory policyConfigurationFactory() {
-        return new CachedPolicyConfigurationFactory();
-    }
-
-    @Bean
-    public ResourceLifecycleManager resourceLifecycleManager() {
-        return new ResourceManagerImpl();
-    }
-
-    @Bean
-    public ResourceConfigurationFactory resourceConfigurationFactory() {
-        return new ResourceConfigurationFactoryImpl();
-    }
-
-    @Bean
-    public SecurityProviderLoader securityProviderLoader() {
-        return new SecurityProviderLoader();
-    }
-
-    @Bean
-    public AuthenticationHandlerManager authenticationHandlerManager() {
-        return new AuthenticationHandlerManager();
-    }
+public class FreePlanApiHandlerConfiguration extends ApiHandlerConfiguration {
 
     @Bean
     public AuthenticationHandlerEnhancer authenticationHandlerEnhancer(Api api) {
         return new FreePlanAuthenticationHandlerEnhancer(api);
     }
 
-    @Bean
-    public AuthenticationHandlerSelector authenticationHandlerSelector() {
-        return new DefaultAuthenticationHandlerSelector();
-    }
-
-    @Bean
-    public ExecutionContextFactory executionContextFactory() {
-        return new ExecutionContextFactory();
-    }
-
-    @Bean
-    public TemplateVariableProviderFactory templateVariableProviderFactory() {
-        return new TemplateVariableProviderFactory();
-    }
-
-    @Bean
-    public InvokerFactory httpInvokerFactory() {
-        return new InvokerFactory();
-    }
-
-    @Bean
-    public ReferenceRegister referenceRegister() {
-        return new DefaultReferenceRegister();
-    }
-    @Bean
-    public GroupLifecyleManager groupLifecyleManager() {
-        return new DefaultGroupLifecycleManager();
-    }
-
-    @Bean
-    public EndpointResolver endpointResolver() {
-        return new TargetEndpointResolver();
-    }
-
-    @Bean
-    public EndpointFactory endpointFactory() {
-        return new SpringFactoriesEndpointFactory();
-    }
-
-    @Bean
-    public ApiTemplateVariableProvider apiTemplateVariableProvider() {
-        return new ApiTemplateVariableProvider();
-    }
-
-    @Bean
-    public RequestProcessorChainFactory requestProcessorChainFactory() {
-        return new RequestProcessorChainFactory();
-    }
-
-    @Bean
-    public ResponseProcessorChainFactory responseProcessorChainFactory() {
-        return new ResponseProcessorChainFactory();
-    }
-
-    @Bean
-    public OnErrorProcessorChainFactory errorProcessorChainFactory() {
-        return new OnErrorProcessorChainFactory();
-    }
 }
