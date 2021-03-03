@@ -83,6 +83,7 @@ public class AdmissionWebHook implements ManagementEndpoint {
             status.setCode(500);
             status.setMessage("AdmissionReview object can't be read");
             reviewResponse = new AdmissionReviewBuilder()
+                    .withApiVersion("admission.k8s.io/v1")
                     .withNewResponse()
                     .withAllowed(false)
                     .withStatus(status)
@@ -136,6 +137,7 @@ public class AdmissionWebHook implements ManagementEndpoint {
         }
 
         return new AdmissionReviewBuilder()
+                .withApiVersion(incomingReview.getApiVersion())
                 .withResponse(response)
                 .build();
     }

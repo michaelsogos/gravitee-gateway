@@ -60,6 +60,7 @@ public class KubeSyncService extends AbstractService {
 
     @Override
     protected void doStart() throws Exception {
+        // TODO create configuration key to enable or not this plugin
         Fabric8sMapperUtils.initJsonMapper();
 
         // If the CRDS are not defined when the Gateway start, we try periodically to connect to K8S API Server

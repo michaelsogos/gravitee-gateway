@@ -48,7 +48,7 @@ public class FreePlanAuthenticationHandlerEnhancer extends PlanBasedAuthenticati
 
             Optional<AuthenticationHandler> optionalProvider = authenticationHandlers
                     .stream()
-                    .filter(provider -> provider.name().equalsIgnoreCase(getApi().getAuthentication()))
+                    .filter(provider -> provider.name().equalsIgnoreCase("KEY_LESS"))
                     .findFirst();
 
             if (optionalProvider.isPresent()) {

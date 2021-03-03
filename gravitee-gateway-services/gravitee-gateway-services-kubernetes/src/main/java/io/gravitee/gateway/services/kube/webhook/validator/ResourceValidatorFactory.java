@@ -19,6 +19,7 @@ import io.fabric8.kubernetes.api.model.admission.AdmissionRequest;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Component;
 
 import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
 
@@ -26,6 +27,7 @@ import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
+@Component
 public class ResourceValidatorFactory implements ApplicationContextAware {
 
     private ApplicationContext appContext;

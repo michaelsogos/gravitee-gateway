@@ -80,7 +80,6 @@ spec:
           type: string
           description: Additional data about the state (may be nempty)
           jsonPath: .status.integration.message
-  # either Namespaced or Cluster
   scope: Namespaced
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>

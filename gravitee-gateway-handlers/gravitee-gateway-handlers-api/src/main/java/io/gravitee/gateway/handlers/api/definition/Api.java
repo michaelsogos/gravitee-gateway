@@ -40,8 +40,6 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
     private Date deployedAt;
 
     private boolean planRequired = true;
-    private String authentication;
-    private String authenticationDefinition = "{}";
 
     public Api() {
     }
@@ -92,22 +90,6 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         this.planRequired = planRequired;
     }
 
-    public String getAuthentication() {
-        return authentication;
-    }
-
-    public void setAuthentication(String authentication) {
-        this.authentication = authentication;
-    }
-
-    public String getAuthenticationDefinition() {
-        return authenticationDefinition;
-    }
-
-    public void setAuthenticationDefinition(String authenticationDefinition) {
-        this.authenticationDefinition = authenticationDefinition;
-    }
-
     public boolean isEnabled() {
         return enabled;
     }
@@ -144,8 +126,7 @@ public class Api extends io.gravitee.definition.model.Api implements Reactable, 
         Set<io.gravitee.definition.model.Policy> policies = new HashSet<>();
 
         if (!this.isPlanRequired()) {
-            String security = this.authentication.toUpperCase();
-            Policy secPolicy = buildSecurityPolicy(security);
+            Policy secPolicy = buildSecurityPolicy("KEY_LESS");
 
             if (secPolicy.getName() != null) {
                 policies.add(secPolicy);

@@ -60,7 +60,7 @@ public class FreePlanAuthenticationHandler implements AuthenticationHandler {
     public List<AuthenticationPolicy> handle(ExecutionContext executionContext) {
         return handler.handle(executionContext)
                 .stream()
-                .map(new Function<AuthenticationPolicy, AuthenticationPolicy>() {
+/*                .map(new Function<AuthenticationPolicy, AuthenticationPolicy>() {
                     @Override
                     public AuthenticationPolicy apply(AuthenticationPolicy securityPolicy) {
                         // Override the configuration of the policy with the one provided by the plan
@@ -81,7 +81,7 @@ public class FreePlanAuthenticationHandler implements AuthenticationHandler {
                         return null; // for free plan api, we doesn't want to check subscription
                         // TODO check other thing ?
                     }
-                })
+                })*/
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }

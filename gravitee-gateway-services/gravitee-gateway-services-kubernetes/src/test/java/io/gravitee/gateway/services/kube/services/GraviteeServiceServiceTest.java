@@ -298,7 +298,7 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         ServicesCacheEntry cacheEntry = new ServicesCacheEntry();
         String resourceFullName = "test-single-standalone.default";
         final String serviceIdentifier = "my-api." + resourceFullName;
-        cacheEntry.setHash(serviceIdentifier, "aa93800601ff5f13165d");
+        cacheEntry.setHash(serviceIdentifier, "2b69242b907980b13b9a");
         servicesCacheManager.register(resourceFullName, cacheEntry);
 
         GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
