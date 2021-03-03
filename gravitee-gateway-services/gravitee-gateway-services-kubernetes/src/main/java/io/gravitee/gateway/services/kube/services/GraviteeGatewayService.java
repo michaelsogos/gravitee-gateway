@@ -18,10 +18,7 @@ package io.gravitee.gateway.services.kube.services;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
-import io.gravitee.gateway.services.kube.crds.resources.DoneableGraviteeGateway;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayList;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayReference;
+import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
 import io.reactivex.Flowable;
@@ -36,6 +33,29 @@ public interface GraviteeGatewayService {
     void registerListener(GraviteeGatewayListener listener);
 
     List<GraviteeGateway> listAllGateways();
+
+
+    /**
+     * Check if the GraviteeGateway definition may be safely created (no missing secret for example)
+     * @param gateway
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyCreated(GraviteeGateway gateway);
+
+    /**
+     * Check if the GraviteeGateway definition may be safely updated (no deletion of resources currently in used by an API)
+     * @param gateway
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyUpdated(GraviteeGateway gateway);
+
+    /**
+     * Check if the GraviteeGateway definition may be safely deleted
+     * @param gateway
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyDeleted(GraviteeGateway gateway);
+
 
     Flowable processAction(WatchActionContext<GraviteeGateway> context);
 

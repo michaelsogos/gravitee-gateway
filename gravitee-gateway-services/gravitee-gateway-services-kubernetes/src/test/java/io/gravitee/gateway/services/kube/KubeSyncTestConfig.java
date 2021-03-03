@@ -18,6 +18,9 @@ package io.gravitee.gateway.services.kube;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.server.mock.KubernetesServer;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
+import io.gravitee.gateway.services.kube.crds.cache.GatewayCacheManager;
+import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
+import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheManager;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
@@ -73,5 +76,20 @@ public class KubeSyncTestConfig {
     @Bean
     public ApiManager mockApiManager() {
         return mock(ApiManager.class);
+    }
+
+    @Bean
+    public PluginCacheManager pluginCacheManager() {
+        return new PluginCacheManager();
+    }
+
+    @Bean
+    public GatewayCacheManager gatewayCacheManager() {
+        return new GatewayCacheManager();
+    }
+
+    @Bean
+    public ServicesCacheManager servicesCacheManager() {
+        return new ServicesCacheManager();
     }
 }

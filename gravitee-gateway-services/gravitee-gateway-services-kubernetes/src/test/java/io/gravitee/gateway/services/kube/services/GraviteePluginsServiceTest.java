@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube;
+package io.gravitee.gateway.services.kube.services;
 
 import io.gravitee.definition.model.Policy;
+import io.gravitee.gateway.services.kube.KubeSyncTestConfig;
+import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
+import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
+import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
+import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
-import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
+import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
 import io.gravitee.gateway.services.kube.utils.ObjectMapperHelper;
@@ -31,8 +36,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.mockito.Mockito.*;
 
@@ -47,16 +55,20 @@ public class GraviteePluginsServiceTest extends AbstractServiceTest {
     @Autowired
     protected GraviteePluginsService cut;
 
+    @Autowired
+    protected PluginCacheManager pluginCacheManager;
+
     protected GraviteePluginsListener listener = mock(GraviteePluginsListener.class);
 
     @Before
     public void prepareTest() {
         reset(listener);
         cut.registerListener(listener);
+        pluginCacheManager.clearCache();
     }
 
     @Test
-    public void shouldReplaceSecretInPlugin() {
+    public void processAction_Should_ReplaceSecretInPlugin() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populatePluginResource("default", "myapp-plugins", "/kubernetes/plugins/test-gravitee-plugin-success.yml", true);
 
@@ -79,9 +91,9 @@ public class GraviteePluginsServiceTest extends AbstractServiceTest {
     }
 
     @Test
-    public void shouldNotNotifyListenerTwice() {
+    public void processAction_ShouldNot_NotifyListenerTwice() {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml", 2);
-        populatePluginResource("default", "myapp-plugins", "/kubernetes/plugins/test-gravitee-plugin-success.yml", true);
+        populatePluginResource("default", "myapp-plugins", "/kubernetes/plugins/test-gravitee-plugin-success.yml", true, 2);
 
         final GraviteePluginStatus.IntegrationState integration = new GraviteePluginStatus.IntegrationState();
         integration.setState(GraviteePluginStatus.PluginState.SUCCESS);
@@ -138,7 +150,7 @@ public class GraviteePluginsServiceTest extends AbstractServiceTest {
     }
 
     @Test
-    public void shouldFail_UnknownSecret() {
+    public void processAction_ShouldFail_UnknownSecret() {
         populatePluginResource("default", "myapp-plugins", "/kubernetes/plugins/test-gravitee-plugin-unknown-secret.yml", true);
 
         GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-unknown-secret.yml", GraviteePlugin.class);
@@ -149,4 +161,89 @@ public class GraviteePluginsServiceTest extends AbstractServiceTest {
         verify(listener, never()).onPluginsUpdate(any());
     }
 
+    @Test
+    public void maybeSafelyCreated_ShouldValidate() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+
+        cut.maybeSafelyCreated(plugins);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyCreated_ShouldNot_ValidateCreate_MissingSecret() {
+        GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-unknown-secret.yml", GraviteePlugin.class);
+        cut.maybeSafelyCreated(plugins);
+    }
+
+    @Test
+    public void maybeSafelyUpdate_ShouldValidate_cacheEmpty() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        // load same resource but remove the 'rate-limit' plugin
+        GraviteePlugin oldPlugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        oldPlugins.getSpec().getPlugins().remove("rate-limit");
+
+        // validation pass, removed plugin isn't used (plugin cache is empty
+        cut.maybeSafelyUpdated(plugins, oldPlugins);
+    }
+
+    @Test
+    public void maybeSafelyUpdate_ShouldValidate_RemovedPluginNotUsed() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteePlugin oldPlugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        // load same resource but remove the 'rate-limit' plugin in the most recent GraviteePlugin
+        plugins.getSpec().getPlugins().remove("rate-limit");
+
+        PluginReference ref1 = createPluginReference("jwt-poc", "myapp-plugins", "default");
+        PluginReference ref2 = createPluginReference("oauth2", "myapp-plugins", "default");
+        pluginCacheManager.registerPluginsFor("some-id", Arrays.asList(new PluginRevision<Policy>(null, ref1, 1, "")));
+        pluginCacheManager.registerPluginsFor("some-other-id", Arrays.asList(new PluginRevision<Policy>(null, ref2, 1, "")));
+
+        // validation pass, removed plugin isn't used (plugin cache is empty
+        cut.maybeSafelyUpdated(plugins, oldPlugins);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyUpdate_ShouldNot_Validate_RemovedPluginIsUsed() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteePlugin oldPlugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        // load same resource but remove the 'rate-limit' plugin in the most recent GraviteePlugin
+        plugins.getSpec().getPlugins().remove("rate-limit");
+
+        PluginReference ref1 = createPluginReference("jwt-poc", "myapp-plugins", "default");
+        PluginReference ref2 = createPluginReference("rate-limit", "myapp-plugins", "default");
+        pluginCacheManager.registerPluginsFor("some-id", Arrays.asList(new PluginRevision<Policy>(null, ref1, 1, "")));
+        pluginCacheManager.registerPluginsFor("some-other-id", Arrays.asList(new PluginRevision<Policy>(null, ref2, 1, "")));
+
+        // validation pass, removed plugin isn't used (plugin cache is empty
+        cut.maybeSafelyUpdated(plugins, oldPlugins);
+    }
+
+    @Test
+    public void maybeSafelyDelete_ShouldValidate_RemovedPluginNotUsed() {
+        GraviteePlugin oldPlugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        PluginReference ref1 = createPluginReference("plugin-from-other-resource", "myapp-plugins", "default");
+        pluginCacheManager.registerPluginsFor("some-id", Arrays.asList(new PluginRevision<Policy>(null, ref1, 1, "")));
+
+        cut.maybeSafelyDeleted(oldPlugins);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyDelete_ShouldNot_Validate_RemovedPluginIsUsed() {
+        GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
+        PluginReference ref2 = createPluginReference("rate-limit", "myapp-plugins", "default");
+        pluginCacheManager.registerPluginsFor("some-other-id", Arrays.asList(new PluginRevision<Policy>(null, ref2, 1, "")));
+
+        cut.maybeSafelyDeleted(plugins);
+    }
+
+    private PluginReference createPluginReference(String name, String res, String ns) {
+        PluginReference pluginRef = new PluginReference();
+        pluginRef.setName(name);
+        pluginRef.setNamespace(ns);
+        pluginRef.setResource(res);
+        return pluginRef;
+    }
 }

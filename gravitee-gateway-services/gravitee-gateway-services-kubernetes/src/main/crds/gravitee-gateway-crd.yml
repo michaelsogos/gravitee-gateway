@@ -28,6 +28,137 @@ spec:
       # Each version can be enabled/disabled by Served flag.
       served: true
       # One and only one version must be marked as the storage version.
+      storage: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                selectors:
+                  type: object
+                  additionalProperties:
+                    type: string
+                authenticationReference:
+                  description: Reference to a Policy definition used to authenticate the client application. (ignored if authentication field is present)
+                  type: object
+                  properties:
+                    namespace:
+                      type: string
+                      default: default
+                      description: Namespace where the CustomResource is defined
+                    resource:
+                      type: string
+                      description: The CustomResource name
+                    name:
+                      type: string
+                      description: The name of the policy used to authenticate application as defined into the CustomResource
+                  required: ["name", "resource"]
+                authentication:
+                  description: Policy definition used to authenticate the client application.
+                  type: object
+                  properties:
+                    policy:
+                      type: string
+                      description: Policy Plugin identifier (jwt, key_less...)
+                    configuration:
+                      type: object
+                      description: Map containing the policy configuration (map structure based on the kind of plugin)
+                      x-kubernetes-preserve-unknown-fields: true
+                  required: ["policy"]
+                resourceReferences:
+                  type: array
+                  default: [ ]
+                  items:
+                    type: object
+                    properties:
+                      namespace:
+                        type: string
+                        default: "default"
+                        description: Namespace where the CustomResource is defined
+                      resource:
+                        type: string
+                        description: The CustomResource name
+                      name:
+                        type: string
+                        description: The name of resource plugin into the CustomResource
+                    required: [ "name", "resource"]
+                resources:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      resource:
+                        type: string
+                        description: resource plugin id (oauth2, oauth2-am-resource...)
+                      configuration:
+                        type: object
+                        description: Map containing the pluging configuration (map structure based on the kind of plugin)
+                        x-kubernetes-preserve-unknown-fields: true
+                    required: ["resource", "configuration"]
+                defaultBackendConfigurations:
+                  type: object
+                  properties:
+                    httpClient:
+                      type: object
+                      description: "
+                      HttpClient configuration to apply for the backend service client:
+                        * connectTimeout: 5000
+                        * idleTimeout: 60000
+                        * keepAlive: true
+                        * readTimeout: 10000
+                        * pipelining: false
+                        * maxConcurrentConnections: 100
+                        * useCompression: true
+                        * followRedirects: false
+                      "
+                      x-kubernetes-preserve-unknown-fields: true
+                    httpSslOptions:
+                      type: object
+                      description: "
+                       HttpClient SSL options to apply for the backend service client:
+                         * trustAll: false
+                         * hostnameVerifier: false
+                         * trustStore:
+                             type: PEM
+                             content: <secret name>
+                         * keyStore:
+                             type: PEM
+                             certContent: <secret name>
+                             keyContent: <secret name>
+                      "
+                      x-kubernetes-preserve-unknown-fields: true
+                    httpProxy:
+                      type: object
+                      description: HttpProxy options
+                      x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              properties:
+                hashCodes:
+                  type: object
+                  description: hashCode for each plugin
+                  properties:
+                    plugins:
+                      type: object
+                      additionalProperties: true
+                    httpConfig:
+                      type: string
+                      description: hash of the defaultBackendConfigurations
+                integration:
+                  type: object
+                  properties:
+                    state:
+                      type: string
+                      description: The integration state of the resource
+                    message:
+                      type: string
+                      description: Additional data about the state
+    - name: v1beta1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
       storage: true
       schema:
         openAPIV3Schema:

@@ -14,21 +14,37 @@
 # limitations under the License.
 #
 
-apiVersion: "gravitee.io/v1alpha1"
+apiVersion: "gravitee.io/v1beta1"
 kind: GraviteeGateway
 metadata:
-  name: internal-gw
+  name: internal-gw-def
+  namespace: default
+  generation: 1
 spec:
   authentication:
-    resource: "internal-gw-plugins"
-    name: "oauth2"
-  resourceReferences:
-    - namespace: "default"
-      resource: "internal-gw-plugins"
-      name: "cache"
+    policy: jwt
+    configuration:
+      signature: "HMAC_HS256"
+      publicKeyResolver: "GIVEN_KEY"
+      useSystemProxy: false
+      extractClaims: false
+      propagateAuthHeader: true
+      resolverParameter:
+        valueFrom:
+          secretKeyRef:
+            name: myapp
+            key: myapp-password
+  resources:
+    my-oauth2-res:
+      resource: oauth2
+      configuration:
+        authorizationServerUrl: e
+        introspectionEndpoint: e
+        clientId: e
+        clientSecret: e
   defaultBackendConfigurations:
     httpClient:
-      connectTimeout: 5000
+      connectTimeout: 5010
       idleTimeout: 60000
       keepAlive: true
       readTimeout: 10000
@@ -57,4 +73,4 @@ spec:
         # reference a secret for those elements...
         # need to grant access to secrets in GIO ServiceAccount
         #username:
-        #password
+      #password

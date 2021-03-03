@@ -13,16 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube;
+package io.gravitee.gateway.services.kube.services;
 
 import io.gravitee.common.util.Maps;
 import io.gravitee.definition.model.Policy;
+import io.gravitee.gateway.services.kube.KubeSyncTestConfig;
+import io.gravitee.gateway.services.kube.crds.cache.GatewayCacheEntry;
+import io.gravitee.gateway.services.kube.crds.cache.GatewayCacheManager;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
-import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
+import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
+import io.gravitee.gateway.services.kube.utils.K8SResourceUtils;
 import io.gravitee.gateway.services.kube.utils.ObjectMapperHelper;
 import io.reactivex.subscribers.TestSubscriber;
 import org.junit.Before;
@@ -32,6 +37,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import static io.gravitee.gateway.services.kube.utils.K8SResourceUtils.getFullName;
 import static org.mockito.Mockito.*;
 
 /**
@@ -47,10 +53,14 @@ public class GraviteeGatewayServiceTest extends AbstractServiceTest {
 
     protected GraviteeGatewayListener listener = mock(GraviteeGatewayListener.class);
 
+    @Autowired
+    protected GatewayCacheManager gatewayCacheManager;
+
     @Before
     public void prepareTest() {
         reset(listener);
         cut.registerListener(listener);
+        gatewayCacheManager.clearCache();
     }
 
     @Test
@@ -181,6 +191,7 @@ public class GraviteeGatewayServiceTest extends AbstractServiceTest {
     @Test
     public void shouldNotValidatePluginRef_UnknownSecret() {
         // do not populate the secret
+        // gateway definition doesn't use secret only plugin definition need a secret that is missing.
         populateGatewayResource("default", "internal-gw-ref-nosecret", "/kubernetes/gateways/test-gravitee-gateway-reference-nosecret.yml", true);
         populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
 
@@ -192,4 +203,105 @@ public class GraviteeGatewayServiceTest extends AbstractServiceTest {
         verify(listener, never()).onGatewayUpdate(any());
     }
 
+    @Test
+    public void maybeSafelyCreated_ShouldValidate() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
+
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+
+        cut.maybeSafelyCreated(gateway);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyCreated_ShouldNotValidate_MissingSecret() {
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-reference-nosecret.yml", GraviteeGateway.class);
+
+        cut.maybeSafelyCreated(gateway);
+    }
+
+    @Test
+    public void maybeSafelyUpdate_ShouldValidate_emptyCache() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
+
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+
+        cut.maybeSafelyUpdated(gateway);
+    }
+
+    @Test
+    public void maybeSafelyUpdate_ShouldValidate_CacheWith_NoConflictData() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
+
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+        // remove Authentication definition to test consistency
+        gateway.getSpec().setAuthentication(null);
+        gateway.getSpec().setAuthenticationReference(null);
+
+        GatewayCacheEntry entryWithoutAuthDep = new GatewayCacheEntry();
+        entryWithoutAuthDep.setGateway(getFullName(gateway.getMetadata()));
+        entryWithoutAuthDep.addService("myservice", false); // service doesn't use the Gateway auth, no issues
+        gatewayCacheManager.registerEntryForService("someservice", entryWithoutAuthDep);
+
+        cut.maybeSafelyUpdated(gateway);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyUpdate_ShouldNotValidate_CacheWith_ConflictData() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        populatePluginResource("default", "mygateway-plugins", "/kubernetes/gateways/dependencies/test-gravitee-plugins-for-gateway.yml", true);
+
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+        // remove Authentication definition to test consistency
+        gateway.getSpec().setAuthentication(null);
+        gateway.getSpec().setAuthenticationReference(null);
+
+        GatewayCacheEntry entryWithAuthDep = new GatewayCacheEntry();
+        entryWithAuthDep.setGateway(getFullName(gateway.getMetadata()));
+        entryWithAuthDep.addService("myservice", true); // this service uses the Authentication definition of the gateway
+
+        GatewayCacheEntry entryWithoutAuthDep = new GatewayCacheEntry();
+        entryWithoutAuthDep.setGateway(getFullName(gateway.getMetadata()));
+        entryWithoutAuthDep.addService("myservice", false);
+
+        gatewayCacheManager.registerEntryForService("someservice", entryWithAuthDep);
+        gatewayCacheManager.registerEntryForService("someservice2", entryWithoutAuthDep);
+
+        cut.maybeSafelyUpdated(gateway);
+    }
+
+    @Test
+    public void maybeSafelyDelete_ShouldValidate_emptyCache() {
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+        cut.maybeSafelyDeleted(gateway);
+    }
+
+    @Test
+    public void maybeSafelyDelete_ShouldValidate_CacheWith_ServiceLinkedToOtherGateway() {
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+
+        GatewayCacheEntry noLinkedService = new GatewayCacheEntry();
+        noLinkedService.setGateway("not-this-gateway");
+        noLinkedService.addService("myservice", false);
+
+        gatewayCacheManager.registerEntryForService("someservice", noLinkedService);
+
+        cut.maybeSafelyDeleted(gateway);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyDelete_ShouldNotValidate_UsedByService() {
+        GraviteeGateway gateway = ObjectMapperHelper.readYamlAs("/kubernetes/gateways/test-gravitee-gateway-definition.yml", GraviteeGateway.class);
+
+        GatewayCacheEntry entryWithAuthDep = new GatewayCacheEntry();
+        entryWithAuthDep.setGateway(getFullName(gateway.getMetadata()));
+        entryWithAuthDep.addService("myservice", true); // this service uses the Authentication definition of the gateway
+
+        gatewayCacheManager.registerEntryForService("someservice", entryWithAuthDep);
+
+        cut.maybeSafelyDeleted(gateway);
+    }
 }

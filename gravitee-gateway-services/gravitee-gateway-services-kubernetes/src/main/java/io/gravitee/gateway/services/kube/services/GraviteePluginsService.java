@@ -33,14 +33,55 @@ import io.reactivex.Flowable;
  * @author GraviteeSource Team
  */
 public interface GraviteePluginsService {
+
     void registerListener(GraviteePluginsListener listener);
 
+    /**
+     * Method used by {@link GraviteeGatewayService} or {@link GraviteeServicesService} to create Policy Plugin definition object
+     *
+     * @param context
+     * @param plugin
+     * @param pluginRef
+     * @return
+     */
     PluginRevision<Policy> buildPolicy(WatchActionContext context, Plugin plugin, PluginReference pluginRef);
+
+    /**
+     * Method used by {@link GraviteeGatewayService} or {@link GraviteeServicesService} to create Resource Plugin definition object
+     *
+     * @param context
+     * @param plugin
+     * @param pluginRef
+     * @return
+     */
     PluginRevision<Resource> buildResource(WatchActionContext context, Plugin plugin, PluginReference pluginRef);
+
+    /**
+     * Check if the GraviteePlugin definition may be safely created (no missing secret for example)
+     * @param plugin
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyCreated(GraviteePlugin plugin);
+
+    /**
+     * Check if the GraviteePlugin definition may be safely updated (no deletion of plugin currently in used by an API)
+     * @param plugin
+     * @param oldPlugin
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyUpdated(GraviteePlugin plugin, GraviteePlugin oldPlugin);
+
+    /**
+     * Check if the GraviteePlugin definition may be safely deleted (no deletion of plugin currently in used by an API)
+     * @param plugin
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyDeleted(GraviteePlugin plugin);
 
     Flowable<WatchActionContext<GraviteePlugin>> processAction(WatchActionContext<GraviteePlugin> context);
 
     WatchActionContext<GraviteePlugin> persistAsSuccess(WatchActionContext<GraviteePlugin> context);
+
     WatchActionContext<GraviteePlugin> persistAsError(WatchActionContext<GraviteePlugin> context, String message);
 
     MixedOperation<GraviteePlugin, GraviteePluginList, DoneableGraviteePlugin, io.fabric8.kubernetes.client.dsl.Resource<GraviteePlugin, DoneableGraviteePlugin>> getCrdClient();

@@ -13,33 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube.webhook;
+package io.gravitee.gateway.services.kube.exceptions;
 
-import io.gravitee.common.http.HttpMethod;
-import io.gravitee.node.management.http.endpoint.ManagementEndpoint;
-import io.vertx.ext.web.RoutingContext;
-import org.springframework.stereotype.Component;
+import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Component
-public class PluginsAdmissionHook implements ManagementEndpoint {
+public class ValidationException extends RuntimeException {
 
-    @Override
-    public HttpMethod method() {
-        return HttpMethod.POST;
+    public ValidationException(String message) {
+        super(message);
     }
 
-    @Override
-    public String path() {
-        return "/admission/plugins";
-    }
-
-    @Override
-    public void handle(RoutingContext routingContext) {
-        routingContext.response().setStatusCode(200);
-        routingContext.response().end("POUEY!");
-    }
 }

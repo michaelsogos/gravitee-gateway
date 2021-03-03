@@ -17,6 +17,9 @@ package io.gravitee.gateway.services.kube.spring;
 
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.gravitee.gateway.services.kube.crds.cache.GatewayCacheManager;
+import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
+import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +36,21 @@ import org.springframework.context.annotation.Configuration;
         "io.gravitee.gateway.services.kube.webhook"
 })
 public class KubeSyncConfiguration {
+
+    @Bean
+    public PluginCacheManager pluginCacheManager() {
+        return new PluginCacheManager();
+    }
+
+    @Bean
+    public GatewayCacheManager gatewayCacheManager() {
+        return new GatewayCacheManager();
+    }
+
+    @Bean
+    public ServicesCacheManager servicesCacheManager() {
+        return new ServicesCacheManager();
+    }
 
     @Bean
     public KubernetesClient provideKubeClient() {

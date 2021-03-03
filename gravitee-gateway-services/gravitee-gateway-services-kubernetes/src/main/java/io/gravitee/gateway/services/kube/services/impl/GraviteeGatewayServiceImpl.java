@@ -21,6 +21,8 @@ import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import io.gravitee.definition.model.Policy;
 import io.gravitee.definition.model.plugins.resources.Resource;
+import io.gravitee.gateway.services.kube.crds.cache.GatewayCacheManager;
+import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
@@ -28,9 +30,11 @@ import io.gravitee.gateway.services.kube.crds.resources.service.BackendConfigura
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
+import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
+import io.gravitee.gateway.services.kube.utils.K8SResourceUtils;
 import io.reactivex.Flowable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +45,12 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.computeGenericConfigHashCode;
+import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
+import static io.gravitee.gateway.services.kube.utils.K8SResourceUtils.getFullName;
+import static io.reactivex.Flowable.just;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -60,19 +68,25 @@ public class GraviteeGatewayServiceImpl
     @Autowired
     private GraviteePluginsService graviteePluginsService;
 
+    @Autowired
+    private PluginCacheManager pluginCacheManager;
+
+    @Autowired
+    private GatewayCacheManager gatewayCacheManager;
+
     private void initializeGraviteeGatewayClient(KubernetesClient client) {
         CustomResourceDefinitionContext context = new CustomResourceDefinitionContext.Builder()
-            .withGroup("gravitee.io")
-            .withVersion("v1alpha1")
-            .withScope("Namespaced")
-            .withName("gravitee-gateways.gravitee.io")
-            .withPlural("gravitee-gateways")
-            .withKind("GraviteeGateway")
+            .withGroup(GROUP)
+            .withVersion(DEFAULT_VERSION)
+            .withScope(SCOPE)
+            .withName(GATEWAY_FULLNAME)
+            .withPlural(GATEWAY_PLURAL)
+            .withKind(GATEWAY_KIND)
             .build();
 
         this.crdClient = client.customResources(context, GraviteeGateway.class, GraviteeGatewayList.class, DoneableGraviteeGateway.class);
 
-        KubernetesDeserializer.registerCustomKind("gravitee.io/v1alpha1", "GraviteeGateway", GraviteeGateway.class);
+        KubernetesDeserializer.registerCustomKind(GROUP+"/"+DEFAULT_VERSION, GATEWAY_KIND, GraviteeGateway.class);
     }
 
     @Override
@@ -105,34 +119,38 @@ public class GraviteeGatewayServiceImpl
 
     @Override
     public Flowable processAction(WatchActionContext<GraviteeGateway> context) {
-        Flowable<WatchActionContext<GraviteeGateway>> pipeline = Flowable.just(context);
+        Flowable<WatchActionContext<GraviteeGateway>> pipeline = just(context);
         switch (context.getEvent()) {
             case ADDED:
                 // only validate plugins and HttpConfigs to compute hashcode
-                pipeline =
-                    Flowable
-                        .just(context)
-                        .map(this::computeBackendConfigHashCode)
-                        .map(this::validateAuthentication)
-                        .map(this::validateResources)
+                pipeline = validateGatewayResource(pipeline)
                         .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
                 break;
             case MODIFIED:
             case REFERENCE_UPDATED:
-                pipeline =
-                    Flowable
-                        .just(context)
-                        .map(this::computeBackendConfigHashCode)
-                        .map(this::validateAuthentication)
-                        .map(this::validateResources)
+                pipeline = validateGatewayResource(pipeline)
                         .map(this::notifyListeners)
                         .map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteeGatewayManagement flow
                 break;
-            default:
-            // TODO On delete event : read only status to undeploy services
+            case DELETED:
+                pipeline = pipeline.map(this::clearPluginCache);
         }
         return pipeline;
     }
+
+    protected WatchActionContext<GraviteeGateway> clearPluginCache(WatchActionContext<GraviteeGateway> context) {
+        LOGGER.debug("remove entries in plugin cache for '{}' gateway", context.getResourceName());
+        // Remove all plugins reference used by this Gateway from the plugin cache
+        pluginCacheManager.removePluginsUsedBy(context.getResourceFullName());
+        return context;
+    }
+
+    protected Flowable<WatchActionContext<GraviteeGateway>> validateGatewayResource(Flowable<WatchActionContext<GraviteeGateway>> pipeline) {
+        return pipeline.map(this::computeBackendConfigHashCode)
+                .map(this::validateAuthentication)
+                .map(this::validateResources);
+    }
+
 
     protected WatchActionContext<GraviteeGateway> validateAuthentication(WatchActionContext<GraviteeGateway> context) {
         LOGGER.debug("Validate and Compute HashCode for authentication plugin of GraviteeGateway '{}'", context.getResourceName());
@@ -200,6 +218,15 @@ public class GraviteeGatewayServiceImpl
     public WatchActionContext<GraviteeGateway> persistAsSuccess(WatchActionContext<GraviteeGateway> context) {
         reloadCustomResource(context);
 
+        // keep in cache all plugin reference used by this Gateway
+        // in order to test broken dependencies on GraviteePlugins Update
+        pluginCacheManager.registerPluginsFor(
+                context.getResourceFullName(),
+                context.getPluginRevisions()
+                        .stream()
+                        .filter(PluginRevision::isRef)
+                        .collect(Collectors.toList()));
+
         GraviteeGatewayStatus status = context.getResource().getStatus();
         if (status == null) {
             status = new GraviteeGatewayStatus();
@@ -260,6 +287,44 @@ public class GraviteeGatewayServiceImpl
         } else {
             LOGGER.debug("No changes in GraviteeGateway '{}', bypass status update", context.getResourceName());
             return context;
+        }
+    }
+
+    @Override
+    public void maybeSafelyCreated(GraviteeGateway gateway) {
+        try {
+            validateGatewayResource(just(new WatchActionContext<GraviteeGateway>(gateway, WatchActionContext.Event.ADDED))).blockingSubscribe();
+        } catch (PipelineException e) {
+            throw new ValidationException(e.getMessage());
+        }
+    }
+
+    @Override
+    public void maybeSafelyUpdated(GraviteeGateway gateway) {
+        try {
+            validateGatewayResource(just(new WatchActionContext<GraviteeGateway>(gateway, WatchActionContext.Event.ADDED))).blockingSubscribe();
+            List<String> services = this.gatewayCacheManager.getServiceByGateway(getFullName(gateway.getMetadata()));
+            for (String service : new ArrayList<>(services)) { // iterate on new Array to remove entries into services
+                final boolean serviceUseGatewayAuth = this.gatewayCacheManager.getCacheEntryByService(service).useGatewayAuthDefinition();
+                final boolean gwWithAuthDefinition = gateway.getSpec().getAuthentication() != null || gateway.getSpec().getAuthenticationReference() != null;
+                if (!serviceUseGatewayAuth || gwWithAuthDefinition) {
+                    services.remove(service);
+                }
+            }
+
+            if (!services.isEmpty()) {
+                throw new ValidationException("Authentication definition is missing but expected by some services : [" + String.join(", ", services) + "]");
+            }
+        } catch (PipelineException e) {
+            throw new ValidationException(e.getMessage());
+        }
+    }
+
+    @Override
+    public void maybeSafelyDeleted(GraviteeGateway gateway) {
+        List<String> services = this.gatewayCacheManager.getServiceByGateway(getFullName(gateway.getMetadata()));
+        if (!services.isEmpty()) {
+            throw new ValidationException("Gateway resource is used by some services : [" + String.join(", ", services) + "]");
         }
     }
 }

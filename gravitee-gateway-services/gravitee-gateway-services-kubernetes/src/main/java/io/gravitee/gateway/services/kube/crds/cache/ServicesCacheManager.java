@@ -13,17 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube.handler;
+package io.gravitee.gateway.services.kube.crds.cache;
 
-import io.vertx.core.Handler;
-import io.vertx.core.http.HttpServerRequest;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class ApimControllerHandler implements Handler<HttpServerRequest> {
+public class ServicesCacheManager {
 
-    @Override
-    public void handle(HttpServerRequest httpServerRequest) {}
+    private Map<String, ServicesCacheEntry> servicesCache = new ConcurrentHashMap<>();
+
+    public void register(String service, ServicesCacheEntry entry) {
+        this.servicesCache.put(service, entry);
+    }
+
+    public ServicesCacheEntry get(String service) {
+        return this.servicesCache.get(service);
+    }
+
+    public void remove(String service) {
+        this.servicesCache.remove(service);
+    }
+
+    public void clearCache() {
+        this.servicesCache.clear();
+    }
 }

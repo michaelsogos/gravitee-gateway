@@ -24,29 +24,10 @@ import java.util.Optional;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GraviteeServicesCacheEntry {
+public class ServicesCacheEntry {
 
-    Map<String, List<PluginRevision<?>>> serviceToPlugins = new HashMap<>();
     Map<String, String> serviceHashes = new HashMap<>();
-    Map<String, Boolean> serviceWithGatewayAuth = new HashMap<>();
     Map<String, Boolean> serviceEnabled = new HashMap<>();
-    String gateway;
-
-    public List<PluginRevision<?>> getPlugins(String service) {
-        return serviceToPlugins.get(service);
-    }
-
-    public void setPlugins(String service, List<PluginRevision<?>> plugins) {
-        serviceToPlugins.put(service, plugins);
-    }
-
-    public Boolean useGatewayAuth(String service) {
-        return Optional.ofNullable(serviceWithGatewayAuth.get(service)).orElse(Boolean.FALSE);
-    }
-
-    public void setServiceWithGatewayAuth(String service) {
-        serviceWithGatewayAuth.put(service, Boolean.TRUE);
-    }
 
     public Boolean isEnable(String service) {
         return Optional.ofNullable(this.serviceEnabled.get(service)).orElse(Boolean.FALSE);
@@ -64,11 +45,4 @@ public class GraviteeServicesCacheEntry {
         serviceHashes.put(service, hash);
     }
 
-    public String getGateway() {
-        return gateway;
-    }
-
-    public void setGateway(String gateway) {
-        this.gateway = gateway;
-    }
 }

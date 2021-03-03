@@ -24,12 +24,18 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.kubernetes.client.utils.Serialization;
+import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import io.gravitee.definition.model.LoadBalancerType;
 import io.gravitee.definition.model.ProtocolVersion;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 
 import java.io.IOException;
+
+import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -100,5 +106,9 @@ public class Fabric8sMapperUtils {
     public static void initJsonMapper() {
         SimpleModule module = initializeJsonModule();
         Serialization.jsonMapper().registerModule(module);
+        // register custom resource for deserialization
+        KubernetesDeserializer.registerCustomKind(GROUP + "/" + DEFAULT_VERSION, PLUGINS_KIND, GraviteePlugin.class);
+        KubernetesDeserializer.registerCustomKind(GROUP + "/" + DEFAULT_VERSION, GATEWAY_KIND, GraviteeGateway.class);
+        KubernetesDeserializer.registerCustomKind(GROUP + "/" + DEFAULT_VERSION, SERVICES_KIND, GraviteeServices.class);
     }
 }

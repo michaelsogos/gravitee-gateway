@@ -19,31 +19,21 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: "admission-hook.gravitee.io"
 webhooks:
-  - name: "admission-hook.gravitee.io"
+  - name: "gateway-admission-webhook.default.svc"
     rules:
       - apiGroups:   ["gravitee.io"]
-        apiVersions: ["v1beta1"]
+        apiVersions: ["v1alpha1"]
         operations:  ["CREATE", "UPDATE", "DELETE"]
-        resources:   ["gravitee-plugins"]
-        scope:       "Namespaced"
-      - apiGroups:   ["gravitee.io"]
-        apiVersions: ["v1beta1"]
-        operations:  ["CREATE", "UPDATE", "DELETE"]
-        resources:   ["gravitee-gateways"]
-        scope:       "Namespaced"
-      - apiGroups:   ["gravitee.io"]
-        apiVersions: ["v1beta1"]
-        operations:  ["CREATE", "UPDATE", "DELETE"]
-        resources:   ["gravitee-services"]
+        resources:   ["*"]
         scope:       "Namespaced"
     clientConfig:
       service:
         namespace: default
         name: gateway-admission-webhook
         port: 18082
-        path: "/_node/admission/plugins"
-      caBundle: "MIIFHzCCAwegAwIBAgIUTV3qThWmni/n7Mb6Bg64Yzjbo5cwDQYJKoZIhvcNAQELBQAwHzEdMBsGA1UEAwwUZ2F0ZXdheS1hZG1pc3Npb24tY2EwHhcNMjEwMjI1MTUwNTMxWhcNMzEwMjIzMTUwNTMxWjAfMR0wGwYDVQQDDBRnYXRld2F5LWFkbWlzc2lvbi1jYTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAKVlGjEzu+mvd1jWiYbpKJx0nEj0wBtl5JEyvSVSuSWs2xb3h5VkI1qJABs9DwytH9iZ/dk5sK35sksNqWmootKq81kTSbNzVaRPzWqhfNXIAwQvCS5XEoUiStYCoA0Qvx0rhGoL6Ua0aFoyDkEUnRxQu+JP/xw/0DH6pw7T5aHxX4TIz+X1jIXM0bGOZAWvZTBYcluCC2HsnHH1QXGJIC40DAaaScqNHYW2O0SRN9OossERceJqyG8nSdvyNPnxLjoqW/QZvm/kaByfijYeYvc18jVrcu99O/EIj1K6Sqxkthg2JkN83AMpKXbgjYOeO0RMFmR+OoG6lsIGtuRh3741iNZl/ZXZE3Pc0Vj0OPrqPLbGLRiMiSjtOn0AY/Xlp8CcJ1wPqekY7VVKf5EUzS+4CIASZcHIAOWMUbr0tZ8MAKSNNN++GASvmYVEq29Jh9IT9HbjCWuZcQ+O22eAX245S3g6Toanzq23OzhZeMxhb1dRA50SJkKedcFzsJ9IAkPIbG3M17BeJ2TS9+QUcDXxDsxyKbx5tA0T40XCnX2WFVBBB8j0CFZTcZBmHM0mKjLnTmd/HrlfoWrJBTP/B5VJkFDoaKdT/vGvweagWlwx4mm1xnwfO11y5qmXj3djt9xsp3fxQEud5FvKdq5yIoXEfOlRVyxCUXfACZrhP7VNAgMBAAGjUzBRMB0GA1UdDgQWBBRYH/ObRc73Tgy2T303SzBrAMOMHTAfBgNVHSMEGDAWgBRYH/ObRc73Tgy2T303SzBrAMOMHTAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4ICAQAn3L/AiHTGVxybTmdCsVdTcBN3ijeDBnbPngxiBiiFNqBCh6AS6ppa2vuQ4PYy4s5h7agV0roqVugcfYCPmCaugQig6t/eJNaa/aYrLwb1gLflFf+A2u6r7IW3hhXg6GV4JrfamuNcm2wdEd3DBxmuDo+E1XEis86Gb+W1dTw8VbT8p/8lffXuc0uX8Wg1Qx4IBvx//2uCAjACojhR6GIh4ZXe8cxZ3HtLywHg6unXdz88qoN3d32h72p6Sx1NOYOI8lu3Rcoi3djpDZAPxN7nYQ5o9EyIRBfRyPylMmdEGkqr8fV3h2z3aWd68JNSUNUYJqgud7vIkiYb5LvPkeds0khe2SbUFYGhtQqwqDL3n+Nl5rwIyUKubbRr4eMYKeYuw1IUWb9T1BItRRD0QCEpS7KEwEIIcjvn1779TKW7Tl3LjDHXmbBZcqniRN7PmLYpnR2e9OdGnQzepk0O0sMNPbPEaMl7J8pAoN4fMHg0fJrKnyH+6tM5tN9YHwM9SAxkNQpUtZQnG3ybYZhw4DGvFCWAQuBxSbrtR4dqSmeZn64JhRd/pZVLZio+8fYdSVi7C3HQ2o9pTlYOphFHfaRD6KYaRukK3uYHUPcTodPlp1F7RCSFt31XGz6GeVPIcljGL5HbJSVMb379ubuottcsNFKJ9NKb7r6dtgB0/JOVVw=="
-      #url: https://192.168.0.15:18082/_node/admission/plugins
-    admissionReviewVersions: ["v1beta1"]
+        path: "/hooks/kube/admission"
+      caBundle: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZIekNDQXdlZ0F3SUJBZ0lVVFYzcVRoV21uaS9uN01iNkJnNjRZempibzVjd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0h6RWRNQnNHQTFVRUF3d1VaMkYwWlhkaGVTMWhaRzFwYzNOcGIyNHRZMkV3SGhjTk1qRXdNakkxTVRVdwpOVE14V2hjTk16RXdNakl6TVRVd05UTXhXakFmTVIwd0d3WURWUVFEREJSbllYUmxkMkY1TFdGa2JXbHpjMmx2CmJpMWpZVENDQWlJd0RRWUpLb1pJaHZjTkFRRUJCUUFEZ2dJUEFEQ0NBZ29DZ2dJQkFLVmxHakV6dSttdmQxalcKaVlicEtKeDBuRWowd0J0bDVKRXl2U1ZTdVNXczJ4YjNoNVZrSTFxSkFCczlEd3l0SDlpWi9kazVzSzM1c2tzTgpxV21vb3RLcTgxa1RTYk56VmFSUHpXcWhmTlhJQXdRdkNTNVhFb1VpU3RZQ29BMFF2eDByaEdvTDZVYTBhRm95CkRrRVVuUnhRdStKUC94dy8wREg2cHc3VDVhSHhYNFRJeitYMWpJWE0wYkdPWkFXdlpUQlljbHVDQzJIc25ISDEKUVhHSklDNDBEQWFhU2NxTkhZVzJPMFNSTjlPb3NzRVJjZUpxeUc4blNkdnlOUG54TGpvcVcvUVp2bS9rYUJ5ZgppalllWXZjMThqVnJjdTk5Ty9FSWoxSzZTcXhrdGhnMkprTjgzQU1wS1hiZ2pZT2VPMFJNRm1SK09vRzZsc0lHCnR1UmgzNzQxaU5abC9aWFpFM1BjMFZqME9QcnFQTGJHTFJpTWlTanRPbjBBWS9YbHA4Q2NKMXdQcWVrWTdWVksKZjVFVXpTKzRDSUFTWmNISUFPV01VYnIwdFo4TUFLU05OTisrR0FTdm1ZVkVxMjlKaDlJVDlIYmpDV3VaY1ErTwoyMmVBWDI0NVMzZzZUb2FuenEyM096aFplTXhoYjFkUkE1MFNKa0tlZGNGenNKOUlBa1BJYkczTTE3QmVKMlRTCjkrUVVjRFh4RHN4eUtieDV0QTBUNDBYQ25YMldGVkJCQjhqMENGWlRjWkJtSE0wbUtqTG5UbWQvSHJsZm9XckoKQlRQL0I1VkprRkRvYUtkVC92R3Z3ZWFnV2x3eDRtbTF4bndmTzExeTVxbVhqM2RqdDl4c3AzZnhRRXVkNUZ2SwpkcTV5SW9YRWZPbFJWeXhDVVhmQUNacmhQN1ZOQWdNQkFBR2pVekJSTUIwR0ExVWREZ1FXQkJSWUgvT2JSYzczClRneTJUMzAzU3pCckFNT01IVEFmQmdOVkhTTUVHREFXZ0JSWUgvT2JSYzczVGd5MlQzMDNTekJyQU1PTUhUQVAKQmdOVkhSTUJBZjhFQlRBREFRSC9NQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUNBUUFuM0wvQWlIVEdWeHliVG1kQwpzVmRUY0JOM2lqZURCbmJQbmd4aUJpaUZOcUJDaDZBUzZwcGEydnVRNFBZeTRzNWg3YWdWMHJvcVZ1Z2NmWUNQCm1DYXVnUWlnNnQvZUpOYWEvYVlyTHdiMWdMZmxGZitBMnU2cjdJVzNoaFhnNkdWNEpyZmFtdU5jbTJ3ZEVkM0QKQnhtdURvK0UxWEVpczg2R2IrVzFkVHc4VmJUOHAvOGxmZlh1YzB1WDhXZzFReDRJQnZ4Ly8ydUNBakFDb2poUgo2R0loNFpYZThjeFozSHRMeXdIZzZ1blhkejg4cW9OM2QzMmg3MnA2U3gxTk9ZT0k4bHUzUmNvaTNkanBEWkFQCnhON25ZUTVvOUV5SVJCZlJ5UHlsTW1kRUdrcXI4ZlYzaDJ6M2FXZDY4Sk5TVU5VWUpxZ3VkN3ZJa2lZYjVMdlAKa2VkczBraGUyU2JVRllHaHRRcXdxREwzbitObDVyd0l5VUt1YmJScjRlTVlLZVl1dzFJVVdiOVQxQkl0UlJEMApRQ0VwUzdLRXdFSUljanZuMTc3OVRLVzdUbDNMakRIWG1iQlpjcW5pUk43UG1MWXBuUjJlOU9kR25RemVwazBPCjBzTU5QYlBFYU1sN0o4cEFvTjRmTUhnMGZKcktueUgrNnRNNXROOVlId005U0F4a05RcFV0WlFuRzN5YllaaHcKNERHdkZDV0FRdUJ4U2JydFI0ZHFTbWVabjY0SmhSZC9wWlZMWmlvKzhmWWRTVmk3QzNIUTJvOXBUbFlPcGhGSApmYVJENktZYVJ1a0szdVlIVVBjVG9kUGxwMUY3UkNTRnQzMVhHejZHZVZQSWNsakdMNUhiSlNWTWIzNzl1YnVvCnR0Y3NORktKOU5LYjdyNmR0Z0IwL0pPVlZ3PT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+      #url: https://gateway-ingress-apim-gateway-865b995968-djr9x:18082/hooks/kube/admission/
+    admissionReviewVersions: ["v1"]
     sideEffects: None
     timeoutSeconds: 5

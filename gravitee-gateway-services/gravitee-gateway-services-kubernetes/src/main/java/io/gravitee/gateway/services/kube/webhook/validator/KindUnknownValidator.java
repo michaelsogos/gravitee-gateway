@@ -13,27 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube.webhook;
+package io.gravitee.gateway.services.kube.webhook.validator;
 
-import io.gravitee.node.management.http.endpoint.ManagementEndpointManager;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import io.fabric8.kubernetes.api.model.Status;
+import io.fabric8.kubernetes.api.model.StatusBuilder;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Component
-public class AdmissionHookManagerImpl implements AdmissionHookManager {
+public class KindUnknownValidator implements ResourceValidator {
+    private final String kind;
 
-    @Autowired
-    public ManagementEndpointManager endpointManager;
-
-    @Autowired
-    public AdmissionWebHook admissionWebHook;
+    public KindUnknownValidator(String kind) {
+        this.kind = kind;
+    }
 
     @Override
-    public void registerHooks() {
-        endpointManager.register(admissionWebHook);
+    public Status validate(String operation) {
+        return new StatusBuilder()
+                .withCode(500)
+                .withMessage("Unknown resource Kind " + kind)
+                .build();
     }
 }

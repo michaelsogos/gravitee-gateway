@@ -22,24 +22,29 @@ import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import io.gravitee.definition.model.Policy;
 import io.gravitee.definition.model.plugins.resources.Resource;
+import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
+import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
 import io.reactivex.Flowable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
 import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.computePolicyHashCode;
 import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.computeResourceHashCode;
-
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
@@ -53,6 +58,9 @@ public class GraviteePluginsServiceImpl
 
     private List<GraviteePluginsListener> listeners = new ArrayList<>();
 
+    @Autowired
+    private PluginCacheManager pluginCacheManager;
+
     @Override
     public void afterPropertiesSet() throws Exception {
         initializeGraviteePluginClient(client);
@@ -60,17 +68,17 @@ public class GraviteePluginsServiceImpl
 
     private void initializeGraviteePluginClient(KubernetesClient client) {
         CustomResourceDefinitionContext context = new CustomResourceDefinitionContext.Builder()
-            .withGroup("gravitee.io")
-            .withVersion("v1alpha1")
-            .withScope("Namespaced")
-            .withName("gravitee-plugins.gravitee.io")
-            .withPlural("gravitee-plugins")
-            .withKind("GraviteePlugins")
+            .withGroup(GROUP)
+            .withVersion(DEFAULT_VERSION)
+            .withScope(SCOPE)
+            .withName(PLUGINS_FULLNAME)
+            .withPlural(PLUGINS_PLURAL)
+            .withKind(PLUGINS_KIND)
             .build();
 
         this.crdClient = client.customResources(context, GraviteePlugin.class, GraviteePluginList.class, DoneableGraviteePlugin.class);
 
-        KubernetesDeserializer.registerCustomKind("gravitee.io/v1alpha1", "GraviteePlugin", GraviteePlugin.class);
+        KubernetesDeserializer.registerCustomKind(GROUP + "/" + DEFAULT_VERSION, PLUGINS_KIND, GraviteePlugin.class);
     }
 
     @Override
@@ -92,15 +100,27 @@ public class GraviteePluginsServiceImpl
             case MODIFIED:
                 pipeline = Flowable.just(context).map(this::validate).map(this::notifyListeners).map(this::persistAsSuccess); // don't know why I can't use it at the end of GraviteePluginManagement flow
                 break;
-            default:
-            // TODO On delete event : read only status to undeploy services
+            case DELETED:
+                LOGGER.debug("Nothing to do on DELETE plugins"); // AdmissionHook avoid deleting Plugins currently in used
         }
         return pipeline;
     }
 
     protected WatchActionContext<GraviteePlugin> validate(WatchActionContext<GraviteePlugin> context) {
         LOGGER.debug("Validating GraviteePlugin resource '{}'", context.getResourceName());
+        List<PluginRevision<?>> pluginRevisions = generatePluginRevision(context, true);
+        context.addAllRevisions(pluginRevisions);
+        return context;
+    }
 
+    /**
+     * Parse all Plocy and Resource definition to generate list of PluginRevision.
+     * If the readConf is set to false, only configuration deserialization and secret resolution are bypass. This is useful to process the CustomResource for validation by AdmissionHook
+     * @param context
+     * @param readConf
+     * @return
+     */
+    private List<PluginRevision<?>> generatePluginRevision(WatchActionContext<GraviteePlugin> context, boolean readConf) {
         GraviteePluginSpec spec = context.getResource().getSpec();
         List<PluginRevision<?>> pluginRevisions = new ArrayList<>();
         for (Map.Entry<String, Plugin> entry : spec.getPlugins().entrySet()) {
@@ -110,20 +130,22 @@ public class GraviteePluginsServiceImpl
                     Resource resource = new Resource();
                     resource.setName(buildResourceName(context, entry.getKey()));
                     resource.setType(plugin.getResource());
-                    resource.setConfiguration(
-                        OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
-                    );
-
+                    if (readConf) {
+                        resource.setConfiguration(
+                                OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
+                        );
+                    }
                     PluginReference ref = convertToRef(context, entry.getKey());
                     pluginRevisions.add(new PluginRevision<>(resource, ref, context.getGeneration(), computeResourceHashCode(resource)));
                 } else {
                     // policy or security policy, both have the same controls
                     final Policy policy = new Policy();
                     policy.setName(plugin.getPolicy());
-                    policy.setConfiguration(
-                        OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
-                    );
-
+                    if (readConf) {
+                        policy.setConfiguration(
+                                OBJECT_MAPPER.writeValueAsString(kubernetesService.resolveSecret(context, context.getNamespace(), plugin.getConfiguration()))
+                        );
+                    }
                     PluginReference ref = convertToRef(context, entry.getKey());
                     pluginRevisions.add(new PluginRevision<>(policy, ref, context.getGeneration(), computePolicyHashCode(policy)));
                 }
@@ -132,8 +154,7 @@ public class GraviteePluginsServiceImpl
                 throw new PipelineException(context, "Unable to convert plugin configuration", e);
             }
         }
-        context.addAllRevisions(pluginRevisions);
-        return context;
+        return pluginRevisions;
     }
 
     @Override
@@ -317,4 +338,52 @@ public class GraviteePluginsServiceImpl
         return gioPlugin;
     }
 
+    @Override
+    public void maybeSafelyCreated(GraviteePlugin plugin) {
+        try {
+            this.validate(new WatchActionContext<>(plugin, WatchActionContext.Event.ADDED));
+        } catch (PipelineException e) {
+            throw new ValidationException(e.getMessage());
+        }
+    }
+
+    @Override
+    public void maybeSafelyUpdated(GraviteePlugin plugin, GraviteePlugin oldPlugin) {
+        WatchActionContext<GraviteePlugin> pluginCtx = new WatchActionContext<>(plugin, WatchActionContext.Event.MODIFIED);
+        WatchActionContext<GraviteePlugin> oldPluginCtx = new WatchActionContext<>(oldPlugin, WatchActionContext.Event.MODIFIED);
+
+        try {
+            this.validate(pluginCtx);
+            List<PluginRevision<?>> oldPluginRevisions = this.generatePluginRevision(oldPluginCtx, false);
+            checkBrokenPluginUsage(getDeletedPlugins(pluginCtx.getPluginRevisions(), oldPluginRevisions));
+        } catch (PipelineException e) {
+            throw new ValidationException(e.getMessage());
+        }
+    }
+
+    /**
+     * Perform a diff between both context to generate a list of PluginReference removed from the GraviteePlugin by the resource update.
+     * @param pluginRevision
+     * @param oldPluginRevision
+     * @return
+     */
+    private Stream<PluginReference> getDeletedPlugins(List<PluginRevision<?>> pluginRevision, List<PluginRevision<?>> oldPluginRevision) {
+        return oldPluginRevision.stream().map(PluginRevision::getPluginReference)
+                .filter(maybeDeleted -> !pluginRevision.stream()
+                        .map(PluginRevision::getPluginReference)
+                        .filter(present -> present.equals(maybeDeleted)).findFirst().isPresent());
+    }
+
+    @Override
+    public void maybeSafelyDeleted(GraviteePlugin deletedPlugin) {
+        WatchActionContext<GraviteePlugin> context = new WatchActionContext<>(deletedPlugin, WatchActionContext.Event.DELETED);
+        checkBrokenPluginUsage(this.generatePluginRevision(context, false).stream().map(PluginRevision::getPluginReference));
+    }
+
+    private void checkBrokenPluginUsage(Stream<PluginReference> pluginRef) {
+        List<String> resources = pluginRef.flatMap(ref -> pluginCacheManager.resourcesUsingPlugin(ref).stream()).distinct().collect(Collectors.toList());
+        if (!resources.isEmpty()) {
+            throw new ValidationException("Plugins are used by GraviteeGateway or GraviteeServices : [" + String.join(", " , resources) + "]");
+        }
+    }
 }

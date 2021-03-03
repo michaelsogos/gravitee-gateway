@@ -18,15 +18,14 @@ package io.gravitee.gateway.services.kube.services.impl;
 import io.gravitee.definition.model.HttpClientSslOptions;
 import io.gravitee.definition.model.HttpProxy;
 import io.gravitee.gateway.handlers.api.definition.Api;
-import io.gravitee.gateway.services.kube.crds.cache.GraviteeServicesCacheEntry;
+import io.gravitee.gateway.services.kube.crds.cache.GatewayCacheEntry;
+import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheEntry;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -48,7 +47,9 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
 
     private List<Api> apis = new ArrayList<>();
 
-    private GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+    private ServicesCacheEntry serviceCacheEntry = new ServicesCacheEntry();
+
+    private GatewayCacheEntry gatewayCacheEntry = new GatewayCacheEntry();
 
     public ServiceWatchActionContext(GraviteeServices resource, Event event) {
         super(resource, event);
@@ -86,11 +87,23 @@ public class ServiceWatchActionContext extends WatchActionContext<GraviteeServic
         return apis;
     }
 
-    public GraviteeServicesCacheEntry getCacheEntry() {
-        return cacheEntry;
+    public ServicesCacheEntry getServiceCacheEntry() {
+        return serviceCacheEntry;
     }
 
-    public void setCacheEntry(GraviteeServicesCacheEntry cacheEntry) {
-        this.cacheEntry = cacheEntry;
+    public void setServiceCacheEntry(ServicesCacheEntry serviceCacheEntry) {
+        this.serviceCacheEntry = serviceCacheEntry;
     }
+
+    public GatewayCacheEntry getGatewayCacheEntry() {
+        return gatewayCacheEntry;
+    }
+
+    public void setGatewayCacheEntry(GatewayCacheEntry gatewayCacheEntry) {
+        this.gatewayCacheEntry = gatewayCacheEntry;
+    }
+    public void registerApiPlugins(List<PluginRevision<?>> plugins) {
+        this.getPluginRevisions().addAll(plugins);
+    }
+
 }

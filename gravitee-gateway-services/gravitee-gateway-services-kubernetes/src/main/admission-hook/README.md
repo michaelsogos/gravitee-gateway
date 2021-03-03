@@ -16,7 +16,7 @@ openssl pkcs12 -export -inkey server.key -in server.cer -out server.p12 -passout
 ## generate CABundle value
 
 ```
-$( cat ca.pem | head -n -1 | tail -n+2 | awk 'NF {sub(/\r/, ""); printf "%s",$0;}')
+$( cat ca.pem | base64 -w 0 )
 ```
 
 ## Generate PEM from CRT & KEY
@@ -25,8 +25,3 @@ $( cat ca.pem | head -n -1 | tail -n+2 | awk 'NF {sub(/\r/, ""); printf "%s",$0;
 openssl rsa -inform DER -in server.key > server-key.pem
 openssl x509 -inform DER -in server.crt > server.pem
 ```
-Use the server-key as value:
-
-GRAVITEE_SERVICES_CORE_HTTP_SECURED=true
-GRAVITEE_SERVICES_CORE_HTTP_SSL_KEYSTORE_PATH=/home/eric/workspace/home-gw/server-key.pem
-GRAVITEE_SERVICES_CORE_HTTP_SSL_KEYSTORE_TYPE=PEM

@@ -26,7 +26,7 @@ spec:
     - name: webhook
       port: 18082
       protocol: TCP
-      targetPort: httpmanagement
+      targetPort: 18082
   selector:
     app.kubernetes.io/component: gateway
   type: ClusterIP

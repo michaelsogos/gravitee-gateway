@@ -36,4 +36,11 @@ public interface GraviteeServicesService {
 
     MixedOperation<GraviteeServices, GraviteeServicesList, DoneableGraviteeServices, Resource<GraviteeServices, DoneableGraviteeServices>> getCrdClient();
 
+    /**
+     * Check if the GraviteeServices definition may be safely updated
+     * @param services
+     * @throws io.gravitee.gateway.services.kube.exceptions.ValidationException in case of validation error
+     */
+    void maybeSafelyUpdated(GraviteeServices services);
+
 }

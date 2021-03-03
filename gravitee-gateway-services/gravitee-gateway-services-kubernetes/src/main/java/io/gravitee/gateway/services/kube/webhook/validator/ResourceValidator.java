@@ -13,27 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube.webhook;
+package io.gravitee.gateway.services.kube.webhook.validator;
 
-import io.gravitee.node.management.http.endpoint.ManagementEndpointManager;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import io.fabric8.kubernetes.api.model.Status;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-@Component
-public class AdmissionHookManagerImpl implements AdmissionHookManager {
-
-    @Autowired
-    public ManagementEndpointManager endpointManager;
-
-    @Autowired
-    public AdmissionWebHook admissionWebHook;
-
-    @Override
-    public void registerHooks() {
-        endpointManager.register(admissionWebHook);
-    }
+public interface ResourceValidator {
+    Status validate(String operation);
 }

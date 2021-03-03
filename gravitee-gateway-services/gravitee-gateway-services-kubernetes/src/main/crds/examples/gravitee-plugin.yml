@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-apiVersion: "gravitee.io/v1alpha1"
+apiVersion: "gravitee.io/v1beta1"
 kind: GraviteePlugins
 metadata:
   name: internal-gw-plugins

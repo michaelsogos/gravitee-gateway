@@ -15,6 +15,8 @@
  */
 package io.gravitee.gateway.services.kube.crds.resources;
 
+import java.util.Objects;
+
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
@@ -50,6 +52,19 @@ public class PluginReference {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PluginReference)) return false;
+        PluginReference that = (PluginReference) o;
+        return namespace.equals(that.namespace) && resource.equals(that.resource) && name.equals(that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(namespace, resource, name);
     }
 
     @Override

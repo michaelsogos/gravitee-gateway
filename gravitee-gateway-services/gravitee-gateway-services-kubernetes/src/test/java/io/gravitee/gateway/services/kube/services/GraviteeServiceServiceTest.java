@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.services.kube;
+package io.gravitee.gateway.services.kube.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.definition.model.LoadBalancerType;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
-import io.gravitee.gateway.services.kube.crds.cache.GraviteeServicesCacheEntry;
+import io.gravitee.gateway.services.kube.KubeSyncTestConfig;
+import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheEntry;
+import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheManager;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
-import io.gravitee.gateway.services.kube.services.GraviteeServicesService;
 import io.gravitee.gateway.services.kube.services.impl.GraviteeServicesServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.ServiceWatchActionContext;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
@@ -51,12 +50,15 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
     protected GraviteeServicesServiceImpl cut;
 
     @Autowired
+    protected ServicesCacheManager servicesCacheManager;
+
+    @Autowired
     protected ApiManager apiManager;
 
     @Before
     public void prepareTest() {
         reset(apiManager);
-        cut.getServiceCache().clear();
+        servicesCacheManager.clearCache();
     }
 
     @Test
@@ -239,7 +241,7 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
 
     @Test
     public void shouldNotDeploy_SingleService_MissingGatewayReference() {
-        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+      //  populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-ref-gw", "/kubernetes/services/test-gravitee-service-single-references-import-gateway-ref.yml", true);
         populateGatewayResource("default", "dep-gateway-ref", "/kubernetes/services/dependencies/dep-gravitee-gateway-reference.yml", false);
 
@@ -254,11 +256,11 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", true);
 
-        GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+        ServicesCacheEntry cacheEntry = new ServicesCacheEntry();
         String resourceFullName = "test-single-standalone.default";
         final String serviceIdentifier = "my-api." + resourceFullName;
         cacheEntry.setHash(serviceIdentifier, "##changed");
-        cut.getServiceCache().put(resourceFullName, cacheEntry);
+        servicesCacheManager.register(resourceFullName, cacheEntry);
 
         GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
         TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.MODIFIED)).test();
@@ -293,11 +295,11 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
         populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", true);
 
-        GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+        ServicesCacheEntry cacheEntry = new ServicesCacheEntry();
         String resourceFullName = "test-single-standalone.default";
         final String serviceIdentifier = "my-api." + resourceFullName;
         cacheEntry.setHash(serviceIdentifier, "aa93800601ff5f13165d");
-        cut.getServiceCache().put(resourceFullName, cacheEntry);
+        servicesCacheManager.register(resourceFullName, cacheEntry);
 
         GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
         TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.MODIFIED)).test();
@@ -311,11 +313,11 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
     public void shouldUnDeploy_IfApiDisabled() {
         populateServicesResource("default", "test-single-standalone", "/kubernetes/services/test-gravitee-service-single-disable-api-level.yml", true);
 
-        GraviteeServicesCacheEntry cacheEntry = new GraviteeServicesCacheEntry();
+        ServicesCacheEntry cacheEntry = new ServicesCacheEntry();
         String resourceFullName = "test-single-standalone.default";
         final String serviceIdentifier = "my-api." + resourceFullName;
         cacheEntry.setServiceEnabled(serviceIdentifier, true);
-        cut.getServiceCache().put(resourceFullName, cacheEntry);
+        servicesCacheManager.register(resourceFullName, cacheEntry);
 
         GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-disable-api-level.yml", GraviteeServices.class);
         TestSubscriber<WatchActionContext<GraviteeServices>> observable = cut.processAction(new ServiceWatchActionContext(services, WatchActionContext.Event.MODIFIED)).test();
