@@ -18,6 +18,8 @@ package io.gravitee.gateway.services.kube.crds.resources;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.CustomResource;
+import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
+import io.gravitee.gateway.services.kube.crds.status.GraviteeServicesStatus;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -26,6 +28,7 @@ import io.fabric8.kubernetes.client.CustomResource;
 public class GraviteeServices extends CustomResource implements Namespaced {
 
     private GraviteeServicesSpec spec;
+    private GraviteeServicesStatus status;
 
     @Override
     public ObjectMeta getMetadata() {
@@ -38,6 +41,14 @@ public class GraviteeServices extends CustomResource implements Namespaced {
 
     public void setSpec(GraviteeServicesSpec spec) {
         this.spec = spec;
+    }
+
+    public GraviteeServicesStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(GraviteeServicesStatus status) {
+        this.status = status;
     }
 
     @Override

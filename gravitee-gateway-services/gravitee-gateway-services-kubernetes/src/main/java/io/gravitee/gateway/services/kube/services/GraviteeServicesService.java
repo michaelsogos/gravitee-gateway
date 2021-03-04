@@ -18,6 +18,7 @@ package io.gravitee.gateway.services.kube.services;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.gravitee.gateway.services.kube.crds.resources.DoneableGraviteeServices;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServicesList;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
@@ -43,4 +44,5 @@ public interface GraviteeServicesService {
      */
     void maybeSafelyUpdated(GraviteeServices services);
 
+    WatchActionContext<GraviteeServices> persistAsError(WatchActionContext<GraviteeServices> context, String message);
 }

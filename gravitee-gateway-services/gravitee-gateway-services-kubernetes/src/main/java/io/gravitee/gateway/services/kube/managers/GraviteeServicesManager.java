@@ -16,6 +16,7 @@
 package io.gravitee.gateway.services.kube.managers;
 
 import io.fabric8.kubernetes.client.Watch;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServicesList;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
@@ -51,21 +52,19 @@ public class GraviteeServicesManager extends AbstractResourceManager<GraviteeSer
             .fromPublisher(this.publisher)
             .subscribeOn(Schedulers.single())
             .flatMap(graviteeServices::processAction)
-            .doOnError(
-                error -> {
-                    if (error instanceof PipelineException) {
-                        // TODO handle resource an subresource properly
-                        LOGGER.error(
+            .subscribe((context) -> LOGGER.debug("Context integration successful"), (error) -> {
+                if (error instanceof PipelineException) {
+                    final WatchActionContext<GraviteeServices> context = ((PipelineException) error).getContext();
+                    LOGGER.error(
                             "Process Action on GraviteeServices fails on resource '{}'",
                             ((PipelineException) error).getContext().getResource(),
                             error
-                        );
-                    } else {
-                        LOGGER.error("Process Action on GraviteeServices fails", error);
-                    }
+                    );
+                    graviteeServices.persistAsError(context, ((PipelineException) error).getMessage());
+                } else {
+                    LOGGER.error("Process Action on GraviteeServices fails", error);
                 }
-            )
-            .subscribe(); // TODO create a LoggerConsumer??
+            });
     }
 
     @Override

@@ -25,13 +25,14 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
+import io.gravitee.common.http.HttpMethod;
 import io.gravitee.definition.model.LoadBalancerType;
 import io.gravitee.definition.model.ProtocolVersion;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
-import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
-import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.crds.resources.service.BackendService;
+import io.gravitee.gateway.services.kube.crds.status.IntegrationState;
 
 import java.io.IOException;
 
@@ -58,21 +59,10 @@ public class Fabric8sMapperUtils {
         );
 
         module.addSerializer(
-                GraviteeGatewayStatus.GatewayState.class,
-                new StdSerializer<GraviteeGatewayStatus.GatewayState>(GraviteeGatewayStatus.GatewayState.class) {
+                IntegrationState.State.class,
+                new StdSerializer<IntegrationState.State>(IntegrationState.State.class) {
                     @Override
-                    public void serialize(GraviteeGatewayStatus.GatewayState value, JsonGenerator jgen, SerializerProvider provider)
-                            throws IOException {
-                        jgen.writeString(value.name());
-                    }
-                }
-        );
-
-        module.addSerializer(
-                GraviteePluginStatus.PluginState.class,
-                new StdSerializer<GraviteePluginStatus.PluginState>(GraviteePluginStatus.PluginState.class) {
-                    @Override
-                    public void serialize(GraviteePluginStatus.PluginState value, JsonGenerator jgen, SerializerProvider provider)
+                    public void serialize(IntegrationState.State value, JsonGenerator jgen, SerializerProvider provider)
                             throws IOException {
                         jgen.writeString(value.name());
                     }
@@ -97,6 +87,28 @@ public class Fabric8sMapperUtils {
                     public ProtocolVersion deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
                             throws IOException, JsonProcessingException {
                         return ProtocolVersion.valueOf(jsonParser.getValueAsString().toUpperCase());
+                    }
+                }
+        );
+
+        module.addDeserializer(
+                HttpMethod.class,
+                new StdDeserializer<HttpMethod>(HttpMethod.class) {
+                    @Override
+                    public HttpMethod deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                            throws IOException, JsonProcessingException {
+                        return HttpMethod.valueOf(jsonParser.getValueAsString().toUpperCase());
+                    }
+                }
+        );
+
+        module.addDeserializer(
+                BackendService.BackendServiceProtocol.class,
+                new StdDeserializer<BackendService.BackendServiceProtocol>(BackendService.BackendServiceProtocol.class) {
+                    @Override
+                    public BackendService.BackendServiceProtocol deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                            throws IOException, JsonProcessingException {
+                        return BackendService.BackendServiceProtocol.valueOf(jsonParser.getValueAsString().toUpperCase());
                     }
                 }
         );

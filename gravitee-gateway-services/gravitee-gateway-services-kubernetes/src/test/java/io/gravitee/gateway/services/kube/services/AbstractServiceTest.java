@@ -23,6 +23,7 @@ import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.crds.resources.service.GraviteeService;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.crds.status.GraviteeServicesStatus;
 import io.gravitee.gateway.services.kube.utils.Fabric8sMapperUtils;
 import io.gravitee.gateway.services.kube.utils.ObjectMapperHelper;
 import org.junit.Before;
@@ -96,9 +97,9 @@ public class AbstractServiceTest {
         kubernetesServer.expect().get().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-services/" + name).andReturn(200, resource).times(times);
         if (mockStatusUpdate) {
             GraviteeServices resourceWithStatus = ObjectMapperHelper.readYamlAs(filename, GraviteeServices.class);
-            /*GraviteeGatewayStatus status = new GraviteeGatewayStatus();
+            GraviteeServicesStatus status = new GraviteeServicesStatus();
             resourceWithStatus.setStatus(status);
-            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-services/" + name +"/status").andReturn(200, resourceWithStatus).always();*/
+            kubernetesServer.expect().put().withPath("/apis/gravitee.io/v1alpha1/namespaces/" + ns + "/gravitee-services/" + name +"/status").andReturn(200, resourceWithStatus).always();
         }
     }
 

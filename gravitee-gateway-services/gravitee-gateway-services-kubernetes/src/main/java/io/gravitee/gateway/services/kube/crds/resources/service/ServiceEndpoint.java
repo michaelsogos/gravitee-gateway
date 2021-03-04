@@ -16,7 +16,6 @@
 package io.gravitee.gateway.services.kube.crds.resources.service;
 
 import io.gravitee.definition.model.LoadBalancerType;
-import io.gravitee.definition.model.services.Services;
 
 import java.util.List;
 
@@ -30,8 +29,6 @@ public class ServiceEndpoint {
 
     private LoadBalancerType loadBalancing;
 
-    private Services services = new Services();
-
     private BackendConfiguration configuration;
 
     public ServiceEndpoint() {}
@@ -42,14 +39,6 @@ public class ServiceEndpoint {
 
     public void setLoadBalancing(LoadBalancerType loadBalancing) {
         this.loadBalancing = loadBalancing;
-    }
-
-    public Services getServices() {
-        return services;
-    }
-
-    public void setServices(Services services) {
-        this.services = services;
     }
 
     public List<BackendService> getBackendServices() {

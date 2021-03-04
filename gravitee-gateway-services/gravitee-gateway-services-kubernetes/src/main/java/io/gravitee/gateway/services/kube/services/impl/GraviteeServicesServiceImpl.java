@@ -30,6 +30,9 @@ import io.gravitee.gateway.services.kube.crds.cache.*;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.resources.service.*;
+import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.crds.status.GraviteeServicesStatus;
+import io.gravitee.gateway.services.kube.crds.status.IntegrationState;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
@@ -64,7 +67,6 @@ public class GraviteeServicesServiceImpl
     implements GraviteeServicesService, InitializingBean {
 
     public final Set<HttpMethod> All_METHODS = new LinkedHashSet<>();
-    private static Logger LOGGER = LoggerFactory.getLogger(GraviteeServicesServiceImpl.class);
 
     @Autowired
     private GraviteePluginsService pluginsService;
@@ -215,11 +217,25 @@ public class GraviteeServicesServiceImpl
         });
     }
 
-    private ServiceWatchActionContext preserveApiData(ServiceWatchActionContext context) {
+    private WatchActionContext<GraviteeServices> preserveApiData(ServiceWatchActionContext context) {
         this.servicesCacheManager.register(context.getResourceFullName(), context.getServiceCacheEntry());
         this.pluginCacheManager.registerPluginsFor(context.getResourceFullName(), context.getPluginRevisions());
         this.gatewayCacheManager.registerEntryForService(context.getResourceFullName(), context.getGatewayCacheEntry());
-        return context;
+
+        GraviteeServicesStatus status = context.getResource().getStatus();
+        if (status == null) {
+            status = new GraviteeServicesStatus();
+            context.getResource().setStatus(status);
+        }
+
+        // TODO do we have to persist hash ?
+        final IntegrationState integration = new IntegrationState();
+        integration.setState(IntegrationState.State.SUCCESS);
+        status.setIntegration(integration);
+        integration.setMessage("");
+
+        return updateResourceStatusOnSuccess(context);
+
     }
 
     private SingleServiceActionContext cleanApiData(SingleServiceActionContext context) {
@@ -234,7 +250,7 @@ public class GraviteeServicesServiceImpl
             ServicesCacheEntry entry = this.servicesCacheManager.get(context.getResourceFullName());
 
             // check that ContextPath is already used
-            if (this.servicesCacheManager.hasContextPathCollision(api.getId(), entry.getContextPath(api.getId()))) {
+            if (this.servicesCacheManager.hasContextPathCollision(api.getId(), context.getServiceCacheEntry().getContextPath(api.getId()))) {
                 throw new PipelineException(context, "Context path already used");
             }
 
@@ -536,7 +552,7 @@ public class GraviteeServicesServiceImpl
                     ServicesCacheEntry entry = this.servicesCacheManager.get(context.getResourceFullName());
 
                     // check that ContextPath is already used
-                    if (this.servicesCacheManager.hasContextPathCollision(api.getId(), entry.getContextPath(api.getId()))) {
+                    if (this.servicesCacheManager.hasContextPathCollision(api.getId(), context.getServiceCacheEntry().getContextPath(api.getId()))) {
                         throw new PipelineException(context, "Context path already used");
                     }
                 }
@@ -544,6 +560,42 @@ public class GraviteeServicesServiceImpl
             }).blockingSubscribe();
         } catch (PipelineException e) {
             throw new ValidationException(e.getMessage());
+        }
+    }
+
+    @Override
+    protected void resetIntegrationState(IntegrationState integration, GraviteeServices refreshedResource) {
+        refreshedResource.getStatus().setIntegration(integration);
+    }
+
+    @Override
+    protected IntegrationState extractIntegrationState(GraviteeServices refreshedResource) {
+        return refreshedResource.getStatus().getIntegration();
+    }
+
+    @Override
+    public WatchActionContext<GraviteeServices> persistAsError(WatchActionContext<GraviteeServices> context, String message) {
+        GraviteeServicesStatus status = context.getResource().getStatus();
+        if (status == null) {
+            status = new GraviteeServicesStatus();
+            context.getResource().setStatus(status);
+        }
+
+        if (
+                !IntegrationState.State.ERROR.equals(status.getIntegration().getState()) ||
+                        !status.getIntegration().getMessage().equals(message)
+        ) {
+            // updating a CR status will trigger a new MODIFIED event, we have to test
+            // if some plugins changed in order stop an infinite loop
+            final IntegrationState integration = new IntegrationState();
+            integration.setState(IntegrationState.State.ERROR);
+            integration.setMessage(message);
+            status.setIntegration(integration);
+
+            return updateResourceStatusOnError(context, integration);
+        } else {
+            LOGGER.debug("No changes in GraviteeServices '{}', bypass status update", context.getResourceName());
+            return context;
         }
     }
 }

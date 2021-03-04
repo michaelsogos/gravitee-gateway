@@ -21,8 +21,8 @@ import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
 import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.PluginReference;
-import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.crds.status.IntegrationState;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
@@ -38,9 +38,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.mockito.Mockito.*;
 
@@ -95,8 +93,8 @@ public class GraviteePluginsServiceTest extends AbstractServiceTest {
         populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml", 2);
         populatePluginResource("default", "myapp-plugins", "/kubernetes/plugins/test-gravitee-plugin-success.yml", true, 2);
 
-        final GraviteePluginStatus.IntegrationState integration = new GraviteePluginStatus.IntegrationState();
-        integration.setState(GraviteePluginStatus.PluginState.SUCCESS);
+        final IntegrationState integration = new IntegrationState();
+        integration.setState(IntegrationState.State.SUCCESS);
 
         GraviteePlugin plugins = ObjectMapperHelper.readYamlAs("/kubernetes/plugins/test-gravitee-plugin-success.yml", GraviteePlugin.class);
         GraviteePluginStatus status = new GraviteePluginStatus();

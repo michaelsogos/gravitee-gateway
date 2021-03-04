@@ -28,16 +28,13 @@ import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.resources.service.BackendConfiguration;
 import io.gravitee.gateway.services.kube.crds.status.GraviteeGatewayStatus;
-import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.crds.status.IntegrationState;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.GraviteeGatewayService;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteeGatewayListener;
-import io.gravitee.gateway.services.kube.utils.K8SResourceUtils;
 import io.reactivex.Flowable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -47,8 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.computeGenericConfigHashCode;
 import static io.gravitee.gateway.services.kube.crds.ResourceConstants.*;
+import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.computeGenericConfigHashCode;
 import static io.gravitee.gateway.services.kube.utils.K8SResourceUtils.getFullName;
 import static io.reactivex.Flowable.just;
 
@@ -60,8 +57,6 @@ import static io.reactivex.Flowable.just;
 public class GraviteeGatewayServiceImpl
     extends AbstractServiceImpl<GraviteeGateway, GraviteeGatewayList, DoneableGraviteeGateway>
     implements GraviteeGatewayService, InitializingBean {
-
-    private static Logger LOGGER = LoggerFactory.getLogger(GraviteeServicesServiceImpl.class);
 
     private List<GraviteeGatewayListener> listeners = new ArrayList<>();
 
@@ -216,8 +211,6 @@ public class GraviteeGatewayServiceImpl
 
     @Override
     public WatchActionContext<GraviteeGateway> persistAsSuccess(WatchActionContext<GraviteeGateway> context) {
-        reloadCustomResource(context);
-
         // keep in cache all plugin reference used by this Gateway
         // in order to test broken dependencies on GraviteePlugins Update
         pluginCacheManager.registerPluginsFor(
@@ -234,8 +227,8 @@ public class GraviteeGatewayServiceImpl
             context.getResource().setStatus(status);
         }
 
-        final GraviteeGatewayStatus.IntegrationState integration = new GraviteeGatewayStatus.IntegrationState();
-        integration.setState(GraviteeGatewayStatus.GatewayState.SUCCESS);
+        final IntegrationState integration = new IntegrationState();
+        integration.setState(IntegrationState.State.SUCCESS);
         status.setIntegration(integration);
         integration.setMessage("");
 
@@ -245,7 +238,8 @@ public class GraviteeGatewayServiceImpl
             // if some plugins changed in order stop an infinite loop
             status.getHashCodes().setPlugins(newHashCodes);
             status.getHashCodes().setBackendConfig(context.getHttpConfigHashCode());
-            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
+
+            return updateResourceStatusOnSuccess(context);
         } else {
             LOGGER.debug("No changes in GravteeGateway '{}', bypass status update", context.getResourceName());
             return context;
@@ -265,7 +259,6 @@ public class GraviteeGatewayServiceImpl
 
     @Override
     public WatchActionContext<GraviteeGateway> persistAsError(WatchActionContext<GraviteeGateway> context, String message) {
-        reloadCustomResource(context);
         GraviteeGatewayStatus status = context.getResource().getStatus();
         if (status == null) {
             status = new GraviteeGatewayStatus();
@@ -273,17 +266,17 @@ public class GraviteeGatewayServiceImpl
         }
 
         if (
-            !GraviteePluginStatus.PluginState.ERROR.equals(status.getIntegration().getState()) ||
+            !IntegrationState.State.ERROR.equals(status.getIntegration().getState()) ||
             !status.getIntegration().getMessage().equals(message)
         ) {
             // updating a CR status will trigger a new MODIFIED event, we have to test
             // if some plugins changed in order stop an infinite loop
-            final GraviteeGatewayStatus.IntegrationState integration = new GraviteeGatewayStatus.IntegrationState();
-            integration.setState(GraviteeGatewayStatus.GatewayState.ERROR);
+            final IntegrationState integration = new IntegrationState();
+            integration.setState(IntegrationState.State.ERROR);
             integration.setMessage(message);
             status.setIntegration(integration);
 
-            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
+            return updateResourceStatusOnError(context, integration);
         } else {
             LOGGER.debug("No changes in GraviteeGateway '{}', bypass status update", context.getResourceName());
             return context;
@@ -326,5 +319,15 @@ public class GraviteeGatewayServiceImpl
         if (!services.isEmpty()) {
             throw new ValidationException("Gateway resource is used by some services : [" + String.join(", ", services) + "]");
         }
+    }
+
+    @Override
+    protected void resetIntegrationState(IntegrationState integration, GraviteeGateway refreshedResource) {
+        refreshedResource.getStatus().setIntegration(integration);
+    }
+
+    @Override
+    protected IntegrationState extractIntegrationState(GraviteeGateway refreshedResource) {
+        return refreshedResource.getStatus().getIntegration();
     }
 }

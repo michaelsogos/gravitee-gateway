@@ -193,6 +193,30 @@ spec:
                                 additionalProperties: true
 
                     required: [ "vhosts", "paths", "endpoints" ]
+            status:
+              type: object
+              properties:
+                integration:
+                  type: object
+                  properties:
+                    state:
+                      type: string
+                      description: The integration state of the resource
+                    message:
+                      type: string
+                      description: Additional data about the state
+      subresources:
+        # status enables the status subresource.
+        status: { }
+      additionalPrinterColumns:
+        - name: State
+          type: string
+          description: The integration state of the resource
+          jsonPath: .status.integration.state
+        - name: Message
+          type: string
+          description: Additional data about the state (may be nempty)
+          jsonPath: .status.integration.message
   scope: Namespaced
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>

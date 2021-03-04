@@ -15,23 +15,33 @@
  */
 package io.gravitee.gateway.services.kube.crds.status;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GraviteePluginStatus extends StatusIntegration {
+public class IntegrationState {
+    private State state;
+    private String message;
 
-    private Map<String, String> hashCodes = new HashMap<>();
-
-    public Map<String, String> getHashCodes() {
-        return hashCodes;
+    public State getState() {
+        return state;
     }
 
-    public void setHashCodes(Map<String, String> hashCodes) {
-        this.hashCodes = hashCodes;
+    public void setState(State state) {
+        this.state = state;
     }
 
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+
+    public enum State {
+        SUCCESS,
+        ERROR,
+    }
 }

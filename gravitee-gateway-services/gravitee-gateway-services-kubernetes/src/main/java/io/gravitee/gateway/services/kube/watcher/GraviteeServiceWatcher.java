@@ -19,7 +19,6 @@ import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
-import io.gravitee.gateway.services.kube.crds.resources.GraviteeGatewayReference;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteePlugin;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.publisher.GraviteeActionPublisher;
@@ -108,7 +107,7 @@ public class GraviteeServiceWatcher implements Watcher<GraviteeServices>, Gravit
         // TODO maybe we should reference services that use this GW in GWStatus to limit search...?
         List<GraviteeServices> services = servicesService.listAllServices();
         for (GraviteeServices resource : services) {
-            WatchActionContext<GraviteeServices> derivedContext = new WatchActionContext<>(resource, Event.REFERENCE_UPDATED);
+            ServiceWatchActionContext derivedContext = new ServiceWatchActionContext(resource, Event.REFERENCE_UPDATED);
             publisher.emit(derivedContext);
         }
     }

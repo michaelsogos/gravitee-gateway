@@ -18,8 +18,10 @@ package io.gravitee.gateway.services.kube.services.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Maps;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
+import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.definition.model.Policy;
 import io.gravitee.definition.model.plugins.resources.Resource;
 import io.gravitee.gateway.services.kube.crds.cache.PluginCacheManager;
@@ -27,13 +29,12 @@ import io.gravitee.gateway.services.kube.crds.cache.PluginRevision;
 import io.gravitee.gateway.services.kube.crds.resources.*;
 import io.gravitee.gateway.services.kube.crds.resources.plugin.Plugin;
 import io.gravitee.gateway.services.kube.crds.status.GraviteePluginStatus;
+import io.gravitee.gateway.services.kube.crds.status.IntegrationState;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
 import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.GraviteePluginsService;
 import io.gravitee.gateway.services.kube.services.listeners.GraviteePluginsListener;
 import io.reactivex.Flowable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -53,8 +54,6 @@ import static io.gravitee.gateway.services.kube.utils.ControllerDigestHelper.com
 public class GraviteePluginsServiceImpl
     extends AbstractServiceImpl<GraviteePlugin, GraviteePluginList, DoneableGraviteePlugin>
     implements GraviteePluginsService, InitializingBean {
-
-    private static Logger LOGGER = LoggerFactory.getLogger(GraviteePluginsServiceImpl.class);
 
     private List<GraviteePluginsListener> listeners = new ArrayList<>();
 
@@ -159,16 +158,14 @@ public class GraviteePluginsServiceImpl
 
     @Override
     public WatchActionContext<GraviteePlugin> persistAsSuccess(WatchActionContext<GraviteePlugin> context) {
-        reloadCustomResource(context);
-
         GraviteePluginStatus status = context.getResource().getStatus();
         if (status == null) {
             status = new GraviteePluginStatus();
             context.getResource().setStatus(status);
         }
 
-        final GraviteePluginStatus.IntegrationState integration = new GraviteePluginStatus.IntegrationState();
-        integration.setState(GraviteePluginStatus.PluginState.SUCCESS);
+        final IntegrationState integration = new IntegrationState();
+        integration.setState(IntegrationState.State.SUCCESS);
         status.setIntegration(integration);
         integration.setMessage("");
 
@@ -185,7 +182,7 @@ public class GraviteePluginsServiceImpl
             // updating a CR status will trigger a new MODIFIED event, we have to test
             // if some plugins changed in order stop an infinite loop
             status.setHashCodes(newHashCodes);
-            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
+            return updateResourceStatusOnSuccess(context);
         } else {
             LOGGER.debug("No changes in GravteePlugins '{}', bypass status update", context.getResourceName());
             return context;
@@ -198,7 +195,6 @@ public class GraviteePluginsServiceImpl
 
     @Override
     public WatchActionContext<GraviteePlugin> persistAsError(WatchActionContext<GraviteePlugin> context, String message) {
-        reloadCustomResource(context);
         GraviteePluginStatus status = context.getResource().getStatus();
         if (status == null) {
             status = new GraviteePluginStatus();
@@ -206,17 +202,17 @@ public class GraviteePluginsServiceImpl
         }
 
         if (
-            !GraviteePluginStatus.PluginState.ERROR.equals(status.getIntegration().getState()) ||
+            !IntegrationState.State.ERROR.equals(status.getIntegration().getState()) ||
             !status.getIntegration().getMessage().equals(message)
         ) {
             // updating a CR status will trigger a new MODIFIED event, we have to test
             // if some plugins changed in order stop an infinite loop
-            final GraviteePluginStatus.IntegrationState integration = new GraviteePluginStatus.IntegrationState();
-            integration.setState(GraviteePluginStatus.PluginState.ERROR);
+            final IntegrationState integration = new IntegrationState();
+            integration.setState(IntegrationState.State.ERROR);
             integration.setMessage(message);
             status.setIntegration(integration);
 
-            return context.refreshResource(crdClient.inNamespace(context.getNamespace()).updateStatus(context.getResource()));
+            return updateResourceStatusOnError(context, integration);
         } else {
             LOGGER.debug("No changes in GravteePlugins '{}', bypass status update", context.getResourceName());
             return context;
@@ -385,5 +381,15 @@ public class GraviteePluginsServiceImpl
         if (!resources.isEmpty()) {
             throw new ValidationException("Plugins are used by GraviteeGateway or GraviteeServices : [" + String.join(", " , resources) + "]");
         }
+    }
+
+    @Override
+    protected void resetIntegrationState(IntegrationState integration, GraviteePlugin refreshedResource) {
+        refreshedResource.getStatus().setIntegration(integration);
+    }
+
+    @Override
+    protected IntegrationState extractIntegrationState(GraviteePlugin refreshedResource) {
+        return refreshedResource.getStatus().getIntegration();
     }
 }

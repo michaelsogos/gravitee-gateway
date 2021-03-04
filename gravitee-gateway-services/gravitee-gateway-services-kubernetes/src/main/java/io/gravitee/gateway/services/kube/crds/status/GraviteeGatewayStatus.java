@@ -22,11 +22,9 @@ import java.util.Map;
  * @author Eric LELEU (eric.leleu at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class GraviteeGatewayStatus {
+public class GraviteeGatewayStatus extends StatusIntegration {
 
     private GatewayHashCodes hashCodes = new GatewayHashCodes();
-
-    private IntegrationState integration = new IntegrationState();
 
     public GatewayHashCodes getHashCodes() {
         return hashCodes;
@@ -34,14 +32,6 @@ public class GraviteeGatewayStatus {
 
     public void setHashCodes(GatewayHashCodes hashCodes) {
         this.hashCodes = hashCodes;
-    }
-
-    public IntegrationState getIntegration() {
-        return integration;
-    }
-
-    public void setIntegration(IntegrationState integration) {
-        this.integration = integration;
     }
 
     public class GatewayHashCodes {
@@ -64,32 +54,5 @@ public class GraviteeGatewayStatus {
         public void setPlugins(Map<String, String> plugins) {
             this.plugins = plugins;
         }
-    }
-
-    public static class IntegrationState {
-
-        private GatewayState state;
-        private String message;
-
-        public GatewayState getState() {
-            return state;
-        }
-
-        public void setState(GatewayState state) {
-            this.state = state;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-    }
-
-    public enum GatewayState {
-        SUCCESS,
-        ERROR,
     }
 }
