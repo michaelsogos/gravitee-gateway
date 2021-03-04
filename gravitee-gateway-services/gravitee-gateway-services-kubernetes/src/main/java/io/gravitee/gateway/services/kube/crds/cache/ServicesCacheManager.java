@@ -16,6 +16,7 @@
 package io.gravitee.gateway.services.kube.crds.cache;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -36,6 +37,17 @@ public class ServicesCacheManager {
 
     public void remove(String service) {
         this.servicesCache.remove(service);
+    }
+
+    public boolean hasContextPathCollision(String apiId, Set<String> contextPaths) {
+        if (contextPaths != null ) {
+            for (ServicesCacheEntry cacheEntry : servicesCache.values()) {
+                if (cacheEntry.hasContextPath(contextPaths, apiId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public void clearCache() {

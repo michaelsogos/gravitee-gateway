@@ -24,7 +24,9 @@ import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.crds.resources.service.GraviteeService;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Eric LELEU (eric.leleu at graviteesource.com)
@@ -54,6 +56,15 @@ public class SingleServiceActionContext extends WatchActionContext<GraviteeServi
      * use to retrieve easily if the API must be redeploy in case of plugin resource updates
      */
     private List<PluginRevision> pluginRevisions = new ArrayList<>();
+
+    /**
+     * Context Path used by the service (only one in Path base mode / more is possible in vhost mode)
+     */
+    private Set<String> contextPaths = new HashSet<>();
+
+    /**
+     * Flag used to inform if the Service uses the authentication definition coming from the Gateway Spec
+     */
     private boolean useGatewayAuthentication = false;
 
     public SingleServiceActionContext(ServiceWatchActionContext origin, GraviteeService serviceResource, String name) {
@@ -116,6 +127,14 @@ public class SingleServiceActionContext extends WatchActionContext<GraviteeServi
 
     public void setUseGatewayAuthentication(boolean useGatewayAuthentication) {
         this.useGatewayAuthentication = useGatewayAuthentication;
+    }
+
+    public Set<String> getContextPaths() {
+        return contextPaths;
+    }
+
+    public void addContextPath(String contextPath) {
+        this.contextPaths.add(contextPath);
     }
 
     // -- utils methods to regroup in GSUtils class ?

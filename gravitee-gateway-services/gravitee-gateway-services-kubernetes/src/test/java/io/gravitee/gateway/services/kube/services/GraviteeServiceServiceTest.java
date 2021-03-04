@@ -15,13 +15,16 @@
  */
 package io.gravitee.gateway.services.kube.services;
 
+import com.google.common.collect.Sets;
 import io.gravitee.definition.model.LoadBalancerType;
 import io.gravitee.gateway.handlers.api.manager.ApiManager;
 import io.gravitee.gateway.services.kube.KubeSyncTestConfig;
 import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheEntry;
 import io.gravitee.gateway.services.kube.crds.cache.ServicesCacheManager;
+import io.gravitee.gateway.services.kube.crds.resources.GraviteeGateway;
 import io.gravitee.gateway.services.kube.crds.resources.GraviteeServices;
 import io.gravitee.gateway.services.kube.exceptions.PipelineException;
+import io.gravitee.gateway.services.kube.exceptions.ValidationException;
 import io.gravitee.gateway.services.kube.services.impl.GraviteeServicesServiceImpl;
 import io.gravitee.gateway.services.kube.services.impl.ServiceWatchActionContext;
 import io.gravitee.gateway.services.kube.services.impl.WatchActionContext;
@@ -298,7 +301,7 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         ServicesCacheEntry cacheEntry = new ServicesCacheEntry();
         String resourceFullName = "test-single-standalone.default";
         final String serviceIdentifier = "my-api." + resourceFullName;
-        cacheEntry.setHash(serviceIdentifier, "2b69242b907980b13b9a");
+        cacheEntry.setHash(serviceIdentifier, "3fab38b1e3b856175f64");
         servicesCacheManager.register(resourceFullName, cacheEntry);
 
         GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
@@ -327,4 +330,42 @@ public class GraviteeServiceServiceTest extends AbstractServiceTest {
         verify(apiManager, never()).register(any());
         verify(apiManager, times(1)).unregister(argThat(api -> api.equals(serviceIdentifier)));
     }
+
+    @Test
+    public void maybeSafelyUpdate_ShouldValidate_emptyCache() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
+        cut.maybeSafelyUpdated(services);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyUpdate_ShouldNotValidate_NoSecret() {
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
+        cut.maybeSafelyUpdated(services);
+    }
+
+    @Test
+    public void maybeSafelyUpdate_ShouldValidate_NoContextPath_Collision() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
+
+        ServicesCacheEntry entry = new ServicesCacheEntry();
+        entry.setServiceContextPaths("myapi", Sets.newHashSet("hotname:port/path"));
+        servicesCacheManager.register("test", entry);
+
+        cut.maybeSafelyUpdated(services);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void maybeSafelyUpdate_ShouldNotValidate_ContextPath_Collision() {
+        populateSecret("default", "myapp", "/kubernetes/test-secret-opaque.yml");
+        GraviteeServices services = ObjectMapperHelper.readYamlAs("/kubernetes/services/test-gravitee-service-single-standalone-jwt.yml", GraviteeServices.class);
+
+        ServicesCacheEntry entry = new ServicesCacheEntry();
+        entry.setServiceContextPaths("myapi", Sets.newHashSet("toto.domain.name:82/context/path"));
+        servicesCacheManager.register("test", entry);
+
+        cut.maybeSafelyUpdated(services);
+    }
+
 }

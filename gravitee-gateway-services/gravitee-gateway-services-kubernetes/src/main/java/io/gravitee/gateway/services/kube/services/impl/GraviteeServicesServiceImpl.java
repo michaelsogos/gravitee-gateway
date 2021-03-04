@@ -15,6 +15,7 @@
  */
 package io.gravitee.gateway.services.kube.services.impl;
 
+import com.google.common.collect.Streams;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
@@ -62,6 +63,7 @@ public class GraviteeServicesServiceImpl
     extends AbstractServiceImpl<GraviteeServices, GraviteeServicesList, DoneableGraviteeServices>
     implements GraviteeServicesService, InitializingBean {
 
+    public final Set<HttpMethod> All_METHODS = new LinkedHashSet<>();
     private static Logger LOGGER = LoggerFactory.getLogger(GraviteeServicesServiceImpl.class);
 
     @Autowired
@@ -81,6 +83,10 @@ public class GraviteeServicesServiceImpl
 
     @Autowired
     private ServicesCacheManager servicesCacheManager;
+
+    public GraviteeServicesServiceImpl() {
+        Collections.addAll(this.All_METHODS, HttpMethod.values());
+    }
 
     private void initializeGraviteeServicesClient(KubernetesClient client) {
         LOGGER.debug("Creating CRD Client for 'gravitee-services'");
@@ -168,7 +174,10 @@ public class GraviteeServicesServiceImpl
                     acc.registerApiPlugins(ctx.getPluginRevisions());
                     cacheEntry.setServiceEnabled(api.getId(), api.isEnabled());
                     cacheEntry.setHash(api.getId(), computeApiHashCode(api));
-
+                    if (cacheEntry.hasContextPath(ctx.getContextPaths(), api.getId())) {
+                        throw new PipelineException(context, "Context path already used");
+                    }
+                    cacheEntry.setServiceContextPaths(api.getId(), ctx.getContextPaths());
                     // update Gateway Cache entry
                     acc.getGatewayCacheEntry().addService(api.getId(), ctx.isUseGatewayAuthentication());
 
@@ -219,23 +228,16 @@ public class GraviteeServicesServiceImpl
         this.pluginCacheManager.removePluginsUsedBy(context.getResourceFullName());
         return context;
     }
-/*
-    private ServiceWatchActionContext addService(ServiceWatchActionContext context) {
-        for (Api api : context.getApis()) {
-            if (api.isEnabled()) {
-                LOGGER.info("Deploy Api '{}'", api.getId());
-                api.setDeployedAt(new Date());
-                apiManager.register(api);
-            } else {
-                LOGGER.debug("Ignore disabled Api '{}'", api.getId());
-            }
-        }
-        return context;
-    }*/
 
     private ServiceWatchActionContext deployService(ServiceWatchActionContext context) {
         for (Api api : context.getApis()) {
             ServicesCacheEntry entry = this.servicesCacheManager.get(context.getResourceFullName());
+
+            // check that ContextPath is already used
+            if (this.servicesCacheManager.hasContextPathCollision(api.getId(), entry.getContextPath(api.getId()))) {
+                throw new PipelineException(context, "Context path already used");
+            }
+
             if (!api.isEnabled()) {
                 boolean wasPresentAndEnabled = (entry != null && entry.isEnable(api.getId()));
                 if (wasPresentAndEnabled) {
@@ -270,7 +272,7 @@ public class GraviteeServicesServiceImpl
         api.setName(context.getServiceName());
         api.setId(context.buildApiId());
         api.setEnabled(context.getServiceResource().isEnabled() && context.getResource().getSpec().isEnabled());
-        api.setPlanRequired(false); // TODO maybe useless for the right reactable type
+        api.setPlanRequired(false); // TODO change it to use a context
         api.setDefinitionVersion(DefinitionVersion.V1);
         // do not call api.setDeployedAt(new Date()) here to avoid Hashcode update
 
@@ -326,7 +328,7 @@ public class GraviteeServicesServiceImpl
                     path.setPath(svcPath.getPrefix());
 
                     Rule authRule = new Rule();
-                    authRule.setMethods(newHashSet(HttpMethod.values()));
+                    authRule.setMethods(All_METHODS);
                     authRule.setPolicy(authPolicy);
 
                     List<Rule> rules = new ArrayList<>();
@@ -340,7 +342,7 @@ public class GraviteeServicesServiceImpl
                                     Rule rule = new Rule();
                                     Set<HttpMethod> methods = r.getMethods();
                                     if (methods == null || methods.isEmpty()) {
-                                        rule.setMethods(newHashSet(HttpMethod.values()));
+                                        rule.setMethods(All_METHODS);
                                     } else {
                                         rule.setMethods(methods);
                                     }
@@ -389,7 +391,12 @@ public class GraviteeServicesServiceImpl
             context
                 .getServiceResource()
                 .getVhosts()
-                .stream()
+                .stream().map(v -> {
+                    String contextPath = v.getHost() + v.getPath();
+                    // preserve the context path in order to avoid collision with other Services
+                    context.addContextPath(contextPath);
+                    return v;
+                })
                 .filter(
                     v -> {
                         LOGGER.info("VirtualHost({},{}) = {}", v.getHost(), v.getPath(), v.isEnabled());
@@ -524,7 +531,17 @@ public class GraviteeServicesServiceImpl
     @Override
     public void maybeSafelyUpdated(GraviteeServices services) {
         try {
-            validateResource(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).blockingSubscribe();
+            validateResource(new ServiceWatchActionContext(services, WatchActionContext.Event.ADDED)).map(context -> {
+                for (Api api : context.getApis()) {
+                    ServicesCacheEntry entry = this.servicesCacheManager.get(context.getResourceFullName());
+
+                    // check that ContextPath is already used
+                    if (this.servicesCacheManager.hasContextPathCollision(api.getId(), entry.getContextPath(api.getId()))) {
+                        throw new PipelineException(context, "Context path already used");
+                    }
+                }
+                return true;
+            }).blockingSubscribe();
         } catch (PipelineException e) {
             throw new ValidationException(e.getMessage());
         }

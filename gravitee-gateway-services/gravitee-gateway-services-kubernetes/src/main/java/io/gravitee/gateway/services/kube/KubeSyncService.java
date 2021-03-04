@@ -26,6 +26,7 @@ import io.gravitee.gateway.services.kube.webhook.AdmissionHookManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.Executors;
@@ -40,6 +41,9 @@ import java.util.concurrent.TimeUnit;
 public class KubeSyncService extends AbstractService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KubeSyncService.class);
+
+    @Value("${services.kubernetes.enabled:true}")
+    private boolean enabled;
 
     @Autowired
     private KubernetesClient client;
@@ -60,16 +64,17 @@ public class KubeSyncService extends AbstractService {
 
     @Override
     protected void doStart() throws Exception {
-        // TODO create configuration key to enable or not this plugin
-        Fabric8sMapperUtils.initJsonMapper();
+        if (enabled) {
+            Fabric8sMapperUtils.initJsonMapper();
 
-        // If the CRDS are not defined when the Gateway start, we try periodically to connect to K8S API Server
-        // to avoid prevent the Gateway startup.
-        executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.schedule(new StarterThread(executorService), 0, TimeUnit.SECONDS);
+            // If the CRDS are not defined when the Gateway start, we try periodically to connect to K8S API Server
+            // otherwise GW will not start
+            executorService = Executors.newSingleThreadScheduledExecutor();
+            executorService.schedule(new StarterThread(executorService), 0, TimeUnit.SECONDS);
 
-        if (hookManager != null) {
-            hookManager.registerHooks();
+            if (hookManager != null) {
+                hookManager.registerHooks();
+            }
         }
     }
 
